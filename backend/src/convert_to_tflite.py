@@ -2,22 +2,40 @@ import os
 import tensorflow as tf
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-MODEL_PATH = os.path.join(BASE_DIR, "../models/safebite_mobilenetv2_model.h5")
-TFLITE_PATH = os.path.join(BASE_DIR, "../models/safebite_mobilenetv2_model.tflite")
+PROD_DIR = os.path.abspath(os.path.join(BASE_DIR, "../../models/production"))
 
-print("Loading Keras model...")
-model = tf.keras.models.load_model(MODEL_PATH, compile=False)
+models_to_convert = [
+    {
+        "h5": os.path.join(PROD_DIR, "freshlens_mobilenetv2_model.h5"),
+        "tflite": os.path.join(PROD_DIR, "freshlens_mobilenetv2_model.tflite"),
+        "name": "FreshLens Freshness Classifier"
+    },
+    {
+        "h5": os.path.join(PROD_DIR, "food_validator_model.h5"),
+        "tflite": os.path.join(PROD_DIR, "food_validator_model.tflite"),
+        "name": "Food vs Non-Food Validator"
+    }
+]
 
-print("Converting to TFLite...")
-converter = tf.lite.TFLiteConverter.from_keras_model(model)
+for item in models_to_convert:
+    h5_path = item["h5"]
+    tflite_path = item["tflite"]
+    name = item["name"]
 
-# Apply optimizations for size
-converter.optimizations = [tf.lite.Optimize.DEFAULT]
+    if not os.path.exists(h5_path):
+        print(f"Skipping {name}: {h5_path} does not exist.")
+        continue
 
-tflite_model = converter.convert()
+    print(f"\nLoading Keras model for {name} from {h5_path}...")
+    model = tf.keras.models.load_model(h5_path, compile=False)
 
-print(f"Saving TFLite model to {TFLITE_PATH}...")
-with open(TFLITE_PATH, "wb") as f:
-    f.write(tflite_model)
+    print("Converting to TFLite with size optimization...")
+    converter = tf.lite.TFLiteConverter.from_keras_model(model)
+    converter.optimizations = [tf.lite.Optimize.DEFAULT]
+    tflite_model = converter.convert()
 
-print("Conversion complete!")
+    print(f"Saving TFLite model to {tflite_path} ({len(tflite_model) // 1024} KB)...")
+    with open(tflite_path, "wb") as f:
+        f.write(tflite_model)
+
+print("\nTFLite conversion complete for all available models!")

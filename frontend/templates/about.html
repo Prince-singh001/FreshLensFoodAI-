@@ -1,135 +1,167 @@
 <!doctype html>
 <html lang="en" data-theme="light">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>About | FreshLens AI</title>
+  <meta name="description" content="Learn about FreshLens AI: our mission to make food decisions easier, reduce waste, and provide clear freshness and safety insights." />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🥗</text></svg>" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+</head>
+<body>
+  {% include 'components/navbar.html' %}
 
-    <title>About | SafeBite AI</title>
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🥗</text></svg>">
-
-    <link
-      rel="stylesheet"
-      href="{{ url_for('static', filename='css/style.css') }}"
-    />
-  </head>
-
-  <body>
-    {% include 'components/navbar.html' %}
-
-    <section class="hero">
+  <main>
+    <!-- Section 1: Hero -->
+    <section class="hero" style="max-width:1200px; margin:0 auto; padding:40px 20px 30px;">
       <div class="hero-content">
-        <span class="badge">About SafeBite AI</span>
-
-        <h1>AI Powered Food Freshness Detection</h1>
-
+        <span class="badge">ABOUT FRESHLENS AI</span>
+        <h1>See Your Food. Understand Its Condition.</h1>
         <p>
-          SafeBite AI is an intelligent food quality analysis system developed
-          using Deep Learning, MobileNetV2, OpenCV and Image Processing
-          technologies.
+          FreshLens AI is designed to make everyday food decisions easier by allowing users to capture or upload a food image and receive useful information about the detected item and its freshness when supported.
         </p>
+        <div class="hero-actions">
+          <a href="{{ url_for('scan') }}" class="btn primary touch-friendly">📷 Try Food Scanner</a>
+          <a href="{{ url_for('chatbot_page') }}" class="btn secondary touch-friendly">🤖 Chat with Assistant</a>
+        </div>
       </div>
 
-      <div class="hero-image">
-        <img
-          src="https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=1200&q=80"
-        />
+      <div class="hero-visual">
+        <div class="scanner-card" style="padding:0; overflow:hidden;">
+          <img src="https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=800&q=80" 
+               alt="Fresh market produce and vegetables" 
+               style="width:100%; height:280px; object-fit:cover;" />
+        </div>
       </div>
     </section>
 
-    <section class="about-section">
-      <div class="card">
-        <h2>🎯 Problem Statement</h2>
-
-        <p>
-          Food spoilage causes health risks, food wastage and financial losses.
-          Traditional inspection methods are slow and depend heavily on human
-          observation.
+    <!-- Section 2: Why It Exists & Problems It Solves -->
+    <section style="max-width:1200px; margin:40px auto; padding:0 20px;">
+      <div class="section-heading" style="text-align:center; max-width:680px; margin:0 auto 32px;">
+        <span class="badge">Mission & Purpose</span>
+        <h2>Why FreshLens AI Exists</h2>
+        <p style="color:var(--text-secondary); font-size:0.95rem; margin-top:6px;">
+          Empowering households and food lovers to make smarter, safer, and less wasteful food choices.
         </p>
       </div>
 
-      <div class="card">
-        <h2>💡 Proposed Solution</h2>
-
-        <p>
-          SafeBite AI uses image-based deep learning models to identify food
-          items and determine whether they are fresh or spoiled.
-        </p>
-      </div>
-
-      <div class="card">
-        <h2>🚀 Project Goal</h2>
-
-        <p>
-          To provide a fast, accurate and user-friendly food freshness detection
-          platform accessible through a modern web application.
-        </p>
-      </div>
-    </section>
-
-    <section class="tech-stack">
-      <h2>Technology Stack</h2>
-
-      <div class="stack-grid">
-        <div class="stack-card">Python</div>
-        <div class="stack-card">Flask</div>
-        <div class="stack-card">TensorFlow</div>
-        <div class="stack-card">Keras</div>
-        <div class="stack-card">OpenCV</div>
-        <div class="stack-card">MobileNetV2</div>
-        <div class="stack-card">HTML</div>
-        <div class="stack-card">CSS</div>
-        <div class="stack-card">JavaScript</div>
-      </div>
-    </section>
-
-    <section class="dataset-section">
-      <h2>Supported Food Classes</h2>
-
-      <div class="food-tags">
-        <span>🍎 Apple</span>
-        <span>🍌 Banana</span>
-        <span>🍊 Orange</span>
-        <span>🍅 Tomato</span>
-        <span>🥔 Potato</span>
-        <span>🥒 Cucumber</span>
-        <span>🥬 Bitter Gourd</span>
-      </div>
-    </section>
-
-    <section class="team-section">
-      <div class="section-heading">
-        <span class="badge">Our Team</span>
-        <h2>Meet The Developers</h2>
-        <p>The minds behind SafeBite AI, passionate about food safety and deep learning.</p>
-      </div>
-
-      <div class="team-grid">
-        <div class="team-card">
-          <div class="team-img-wrapper">
-            <img src="{{ url_for('static', filename='image/me.jpeg') }}" alt="Prince Singh" />
-          </div>
-          <h3>Prince Singh</h3>
-          <p class="role">AI Research & Backend Lead</p>
-          <p class="bio">
-            Specializes in training Convolutional Neural Networks and deploying lightweight models like MobileNetV2. Passionate about computer vision applications in food safety.
+      <div class="category-grid">
+        <div class="info-card">
+          <div class="icon">🎯</div>
+          <h3>The Problem We Solve</h3>
+          <p>
+            Millions of tons of edible produce are thrown away each year simply because people are unsure whether an item is still good to eat. At the same time, consuming spoiled food leads to preventable illness. Simple visual guidance helps bridge that gap.
           </p>
         </div>
 
-        <div class="team-card">
-          <div class="team-img-wrapper">
-            <img src="{{ url_for('static', filename='image/rishabh.jpeg') }}" alt="Rishabh Vishwakarma" />
-          </div>
-          <h3>Rishabh Vishwakarma</h3>
-          <p class="role">UX Designer & Full Stack Developer</p>
-          <p class="bio">
-            Focuses on building intuitive, clean, and interactive user interfaces. Enthusiastic about creating seamless responsive experiences and integrating AI predictions into real-world web products.
+        <div class="info-card">
+          <div class="icon">💡</div>
+          <h3>How We Help Users</h3>
+          <p>
+            FreshLens AI turns a quick snapshot into clear condition indicators. Instead of second-guessing produce in your fridge or grocery store, you receive instant freshness assessments, storage recommendations, and safety reminders.
+          </p>
+        </div>
+
+        <div class="info-card">
+          <div class="icon">🤝</div>
+          <h3>Our Product Philosophy</h3>
+          <p>
+            We prioritize honesty and transparency over inflated claims. When an item is supported, we share clear assessments. When it isn't, we tell you openly. FreshLens AI assists your judgment—it never replaces your common sense.
           </p>
         </div>
       </div>
     </section>
 
-    {% include 'components/footer.html' %}
+    <!-- Section 3: What You Can Do With FreshLens AI -->
+    <section style="max-width:1200px; margin:50px auto; padding:0 20px;">
+      <div class="section-heading" style="text-align:center; max-width:680px; margin:0 auto 32px;">
+        <span class="badge">Everyday Capabilities</span>
+        <h2>What You Can Do With FreshLens AI</h2>
+        <p style="color:var(--text-secondary); font-size:0.95rem; margin-top:6px;">
+          Practical features designed to fit naturally into your kitchen routine.
+        </p>
+      </div>
 
-    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
-  </body>
+      <div class="category-grid" style="grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));">
+        <div class="feature-card">
+          <div class="icon">📸</div>
+          <h3>Scan Food In Seconds</h3>
+          <p>Snap a photo using your smartphone or upload an image from your device to identify items and examine condition indicators.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="icon">🥗</div>
+          <h3>Evaluate Freshness</h3>
+          <p>Quickly determine whether fruits and vegetables are fresh or approaching spoilage with straightforward color-coded condition badges.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="icon">🧊</div>
+          <h3>Optimize Storage Habits</h3>
+          <p>Discover whether your food belongs on the counter, in the crisper drawer, or tightly sealed in the refrigerator to maximize shelf life.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="icon">🤖</div>
+          <h3>Ask Everyday Food Questions</h3>
+          <p>Converse with your AI Food Assistant in English or Hindi to get personalized safety timelines, preparation advice, and storage tips.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 4: Team Behind FreshLens AI -->
+    <section style="max-width:1200px; margin:50px auto; padding:0 20px;">
+      <div class="section-heading" style="text-align:center; max-width:680px; margin:0 auto 32px;">
+        <span class="badge">Team</span>
+        <h2>The Team Behind FreshLens AI</h2>
+        <p style="color:var(--text-secondary); font-size:0.95rem; margin-top:6px;">
+          Building thoughtful, user-centric tools for smarter food decisions.
+        </p>
+      </div>
+
+      <div class="category-grid" style="grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));">
+        <div class="feature-card">
+          <h3 style="margin-bottom:4px;">Prince Singh</h3>
+          <span style="color:var(--primary); font-weight:600; font-size:0.85rem;">Product & AI Lead</span>
+          <p style="margin-top:12px; color:var(--text-secondary); font-size:0.9rem;">
+            Leads product design and computer vision intelligence. Focused on delivering fast, dependable food analysis that helps people reduce food waste and eat with confidence.
+          </p>
+        </div>
+
+        <div class="feature-card">
+          <h3 style="margin-bottom:4px;">Rishabh Vishwakarma</h3>
+          <span style="color:var(--secondary); font-weight:600; font-size:0.85rem;">Product Design & Experience Lead</span>
+          <p style="margin-top:12px; color:var(--text-secondary); font-size:0.9rem;">
+            Directs user experience, responsive interfaces, and camera interactions. Dedicated to creating accessible, mobile-first designs that feel smooth and effortless to use.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 5: Bottom CTA -->
+    <section style="max-width:1100px; margin:50px auto 30px; padding:0 20px;">
+      <div class="cta-section" style="padding:48px 24px; text-align:center;">
+        <h2 style="font-size:1.85rem; margin-bottom:10px;">Experience FreshLens AI Today</h2>
+        <p style="max-width:540px; margin:0 auto 24px; color:var(--text-secondary);">
+          Take a fresh look at what you eat and start making better food decisions right away.
+        </p>
+        <div style="display:flex; justify-content:center; gap:12px; flex-wrap:wrap;">
+          <a href="{{ url_for('scan') }}" class="btn primary touch-friendly" style="padding:12px 28px;">
+            Start Scanning ➔
+          </a>
+          <a href="{{ url_for('contact') }}" class="btn secondary touch-friendly" style="padding:12px 24px;">
+            Get In Touch
+          </a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  {% include 'components/footer.html' %}
+
+  <!-- Mobile Bottom Navigation Bar -->
+  {% include 'components/bottom_nav.html' %}
+
+  <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
 </html>

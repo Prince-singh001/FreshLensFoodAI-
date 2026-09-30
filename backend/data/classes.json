@@ -1,0 +1,260 @@
+{
+  "classes": {
+    "apple": {
+      "display_name": "Apple",
+      "category": "Fruit",
+      "freshness_supported": true,
+      "detector_aliases": ["apple", "apples"],
+      "storage_tip": "Store apples in the refrigerator crisper drawer. Keep separate from other produce as apples release ethylene gas which accelerates ripening.",
+      "safety_guideline": "Avoid consuming apples with deep bruising, mushy soft spots, internal core rot, or fungal discoloration.",
+      "nutrition": {
+        "calories_per_100g": 52,
+        "carbs_g": 13.8,
+        "protein_g": 0.3,
+        "fiber_g": 2.4,
+        "fat_g": 0.2,
+        "key_vitamins": "Vitamin C, Potassium, Antioxidants (Quercetin)"
+      }
+    },
+    "banana": {
+      "display_name": "Banana",
+      "category": "Fruit",
+      "freshness_supported": true,
+      "detector_aliases": ["banana", "bananas"],
+      "storage_tip": "Store bananas at room temperature in a well-ventilated fruit basket or hanger. Wrap crown in plastic to retard ethylene. Refrigerate only once fully ripe.",
+      "safety_guideline": "Discard bananas showing liquid leakage, sour off-odors, or grey mold around the stem or peel.",
+      "nutrition": {
+        "calories_per_100g": 89,
+        "carbs_g": 22.8,
+        "protein_g": 1.1,
+        "fiber_g": 2.6,
+        "fat_g": 0.3,
+        "key_vitamins": "Vitamin B6, Vitamin C, Potassium, Magnesium"
+      }
+    },
+    "orange": {
+      "display_name": "Orange",
+      "category": "Fruit",
+      "freshness_supported": true,
+      "detector_aliases": ["orange", "oranges", "citrus"],
+      "storage_tip": "Store oranges at cool room temperature for up to a week, or in the refrigerator crisper drawer for up to 3-4 weeks in breathable mesh.",
+      "safety_guideline": "Discard if soft, waterlogged, or if white/blue-green powdery penicillium mold appears on the peel.",
+      "nutrition": {
+        "calories_per_100g": 47,
+        "carbs_g": 11.8,
+        "protein_g": 0.9,
+        "fiber_g": 2.4,
+        "fat_g": 0.1,
+        "key_vitamins": "High Vitamin C, Folate, Thiamine, Calcium"
+      }
+    },
+    "tomato": {
+      "display_name": "Tomato",
+      "category": "Vegetable",
+      "freshness_supported": true,
+      "detector_aliases": ["tomato", "tomatoes"],
+      "storage_tip": "Store whole tomatoes stem-side down at room temperature away from direct sunlight. Refrigeration dulls flavor enzymes and creates mealy texture.",
+      "safety_guideline": "Inspect for surface breaks, skin collapse, black rot lesions, or foul fermented odor.",
+      "nutrition": {
+        "calories_per_100g": 18,
+        "carbs_g": 3.9,
+        "protein_g": 0.9,
+        "fiber_g": 1.2,
+        "fat_g": 0.2,
+        "key_vitamins": "Lycopene, Vitamin C, Potassium, Vitamin K"
+      }
+    },
+    "potato": {
+      "display_name": "Potato",
+      "category": "Vegetable",
+      "freshness_supported": true,
+      "detector_aliases": ["potato", "potatoes"],
+      "storage_tip": "Keep in a cool, dark, dry, and well-ventilated place like a pantry. Never refrigerate and keep separate from onions.",
+      "safety_guideline": "Never consume potatoes with extensive green patches (solanine toxicity), soft rot, or bad odor.",
+      "nutrition": {
+        "calories_per_100g": 77,
+        "carbs_g": 17.5,
+        "protein_g": 2.0,
+        "fiber_g": 2.1,
+        "fat_g": 0.1,
+        "key_vitamins": "Vitamin C, Vitamin B6, Potassium, Manganese"
+      }
+    },
+    "cucumber": {
+      "display_name": "Cucumber",
+      "category": "Vegetable",
+      "freshness_supported": true,
+      "detector_aliases": ["cucumber", "cucumbers"],
+      "storage_tip": "Wrap dry cucumbers in paper towels to absorb surface moisture and store in the warmest part of your refrigerator.",
+      "safety_guideline": "Discard if skin feels slimy, rubbery, yellowed, or if sunken soft depressions have formed.",
+      "nutrition": {
+        "calories_per_100g": 15,
+        "carbs_g": 3.6,
+        "protein_g": 0.7,
+        "fiber_g": 0.5,
+        "fat_g": 0.1,
+        "key_vitamins": "Vitamin K, Potassium, Magnesium, High Hydration"
+      }
+    },
+    "bitter_gourd": {
+      "display_name": "Bitter Gourd",
+      "category": "Vegetable",
+      "freshness_supported": true,
+      "detector_aliases": ["bitter gourd", "bittergourd", "bittergroud", "karela"],
+      "storage_tip": "Wrap in breathable paper towels and store inside a ventilated bag in the crisper drawer for up to 4-5 days.",
+      "safety_guideline": "Discard if the flesh turns mushy, slimy, or starts yellowing/orange splitting with offensive odor.",
+      "nutrition": {
+        "calories_per_100g": 17,
+        "carbs_g": 3.7,
+        "protein_g": 1.0,
+        "fiber_g": 2.8,
+        "fat_g": 0.2,
+        "key_vitamins": "Vitamin C, Folate, Charantin (Polypeptide-p)"
+      }
+    },
+    "onion": {
+      "display_name": "Onion",
+      "category": "Vegetable",
+      "freshness_supported": true,
+      "detector_aliases": ["onion", "onions"],
+      "storage_tip": "Store in a cool, dry, well-ventilated basket away from direct sunlight. Do not store near potatoes.",
+      "safety_guideline": "Discard onions showing black mold (Aspergillus niger), neck rot, or mushy outer layers.",
+      "nutrition": {
+        "calories_per_100g": 40,
+        "carbs_g": 9.3,
+        "protein_g": 1.1,
+        "fiber_g": 1.7,
+        "fat_g": 0.1,
+        "key_vitamins": "Quercetin, Vitamin C, Vitamin B6, Sulfur compounds"
+      }
+    },
+    "carrot": {
+      "display_name": "Carrot",
+      "category": "Vegetable",
+      "freshness_supported": true,
+      "detector_aliases": ["carrot", "carrots"],
+      "storage_tip": "Remove green tops, keep unwashed in a perforated plastic bag in the refrigerator crisper drawer.",
+      "safety_guideline": "Discard if limp, rubbery, slimy, or exhibiting white blush bacterial rot.",
+      "nutrition": {
+        "calories_per_100g": 41,
+        "carbs_g": 9.6,
+        "protein_g": 0.9,
+        "fiber_g": 2.8,
+        "fat_g": 0.2,
+        "key_vitamins": "Beta-Carotene (Vitamin A), Biotin, Vitamin K1"
+      }
+    },
+    "mango": {
+      "display_name": "Mango",
+      "category": "Fruit",
+      "freshness_supported": false,
+      "detector_aliases": ["mango", "mangoes"],
+      "storage_tip": "Keep at room temperature until ripe and fragrant. Once ripe, refrigerate for up to five days.",
+      "safety_guideline": "Inspect for sap burn, fermented alcoholic scent, or deep skin blackening.",
+      "nutrition": {
+        "calories_per_100g": 60,
+        "carbs_g": 15.0,
+        "protein_g": 0.8,
+        "fiber_g": 1.6,
+        "fat_g": 0.4,
+        "key_vitamins": "Vitamin A, Vitamin C, Folate, Potassium"
+      }
+    },
+    "grapes": {
+      "display_name": "Grapes",
+      "category": "Fruit",
+      "freshness_supported": false,
+      "detector_aliases": ["grape", "grapes"],
+      "storage_tip": "Store unwashed in their original ventilated container in the refrigerator crisper drawer.",
+      "safety_guideline": "Discard clusters with grey fuzz (Botrytis cinerea mold) or leaking fermented juice.",
+      "nutrition": {
+        "calories_per_100g": 69,
+        "carbs_g": 18.1,
+        "protein_g": 0.7,
+        "fiber_g": 0.9,
+        "fat_g": 0.2,
+        "key_vitamins": "Resveratrol, Vitamin C, Vitamin K"
+      }
+    },
+    "broccoli": {
+      "display_name": "Broccoli",
+      "category": "Vegetable",
+      "freshness_supported": false,
+      "detector_aliases": ["broccoli"],
+      "storage_tip": "Keep in the crisper drawer with loose wrapping to allow air circulation. Avoid dampness.",
+      "safety_guideline": "Discard if florets turn yellowish-brown, develop a pungent odor, or show slippery stem rot.",
+      "nutrition": {
+        "calories_per_100g": 34,
+        "carbs_g": 6.6,
+        "protein_g": 2.8,
+        "fiber_g": 2.6,
+        "fat_g": 0.4,
+        "key_vitamins": "Vitamin C, Vitamin K, Sulforaphane, Folate"
+      }
+    },
+    "rice": {
+      "display_name": "Rice",
+      "category": "Food",
+      "freshness_supported": false,
+      "detector_aliases": ["rice", "cooked rice", "bowl of rice"],
+      "storage_tip": "Refrigerate cooked rice within 2 hours. Consume within 3 to 4 days. Reheat until steaming hot.",
+      "safety_guideline": "Never eat cooked rice left at room temperature overnight due to heat-stable Bacillus cereus toxins.",
+      "nutrition": {
+        "calories_per_100g": 130,
+        "carbs_g": 28.2,
+        "protein_g": 2.7,
+        "fiber_g": 0.4,
+        "fat_g": 0.3,
+        "key_vitamins": "Manganese, Selenium, B Vitamins (Thiamine, Niacin)"
+      }
+    },
+    "bread": {
+      "display_name": "Bread",
+      "category": "Food",
+      "freshness_supported": false,
+      "detector_aliases": ["bread", "toast", "loaf"],
+      "storage_tip": "Store in a cool, dry breadbox or freeze sliced bread. Avoid refrigeration as it accelerates staling.",
+      "safety_guideline": "Do not eat bread with visible mold patches; mold spores penetrate deeply into porous baked goods.",
+      "nutrition": {
+        "calories_per_100g": 265,
+        "carbs_g": 49.0,
+        "protein_g": 9.0,
+        "fiber_g": 2.7,
+        "fat_g": 3.2,
+        "key_vitamins": "Complex Carbohydrates, Iron, Thiamine, Niacin"
+      }
+    },
+    "pizza": {
+      "display_name": "Pizza",
+      "category": "Food",
+      "freshness_supported": false,
+      "detector_aliases": ["pizza", "slice of pizza"],
+      "storage_tip": "Refrigerate in an airtight container within two hours. Consume within 3 to 4 days.",
+      "safety_guideline": "Discard if cheese develops an uncharacteristic sour odor or if toppings appear discolored.",
+      "nutrition": {
+        "calories_per_100g": 266,
+        "carbs_g": 33.0,
+        "protein_g": 11.0,
+        "fiber_g": 2.3,
+        "fat_g": 10.0,
+        "key_vitamins": "Calcium, Protein, Lycopene from tomato base"
+      }
+    },
+    "sandwich": {
+      "display_name": "Sandwich",
+      "category": "Food",
+      "freshness_supported": false,
+      "detector_aliases": ["sandwich", "burger"],
+      "storage_tip": "Keep wrapped in wax paper or foil in the refrigerator. Consume within 24 to 48 hours.",
+      "safety_guideline": "Perishable condiments (mayonnaise, eggs, meats) must be kept strictly below 40°F (4°C).",
+      "nutrition": {
+        "calories_per_100g": 230,
+        "carbs_g": 25.0,
+        "protein_g": 9.5,
+        "fiber_g": 1.8,
+        "fat_g": 9.0,
+        "key_vitamins": "Varies by fillings (Protein, Calcium, Iron)"
+      }
+    }
+  }
+}

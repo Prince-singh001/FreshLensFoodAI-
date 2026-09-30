@@ -1,33 +1,20 @@
-<nav class="navbar">
+<nav class="navbar" role="navigation" aria-label="Main Navigation">
   <a href="{{ url_for('home') }}" class="logo">
-    <span>🥗</span> SafeBite AI
+    <span>🥗</span> FreshLens AI
   </a>
 
-  <div class="nav-links" id="navLinks">
-    <a href="{{ url_for('home') }}" class="{% if request.endpoint == 'home' %}active{% endif %}">Home</a>
-
-    <div class="dropdown">
-      <button class="dropdown-toggle {% if request.endpoint == 'scan' %}active{% endif %}" id="scanBtn" type="button">
-        Scan ▾
-      </button>
-
-      <div class="dropdown-menu" id="scanMenu">
-        <a href="{{ url_for('scan') }}?type=fruit">🍎 Fruit Scan</a>
-        <a href="{{ url_for('scan') }}?type=vegetable">🥦 Vegetable Scan</a>
-        <a href="{{ url_for('scan') }}?type=food">🍱 Food Scan</a>
-      </div>
+  <div class="nav-right" style="display:flex; align-items:center; gap:12px;">
+    <div class="nav-links" id="navLinks">
+      <a href="{{ url_for('home') }}" class="{% if request.endpoint == 'home' %}active{% endif %}">Home</a>
+      <a href="{{ url_for('scan') }}" class="{% if request.endpoint == 'scan' %}active{% endif %}">Food Scanner</a>
+      <a href="{{ url_for('features') }}" class="{% if request.endpoint == 'features' %}active{% endif %}">Features</a>
+      {% if has_history %}
+      <a href="{{ url_for('history') }}" class="{% if request.endpoint == 'history' %}active{% endif %}">History</a>
+      {% endif %}
+      <a href="{{ url_for('chatbot_page') }}" class="{% if request.endpoint == 'chatbot_page' %}active{% endif %}">AI Assistant</a>
+      <a href="{{ url_for('about') }}" class="{% if request.endpoint == 'about' %}active{% endif %}">About</a>
+      <a href="{{ url_for('contact') }}" class="nav-btn {% if request.endpoint == 'contact' %}active{% endif %}">Contact</a>
     </div>
-
-    <a href="{{ url_for('features') }}" class="{% if request.endpoint == 'features' %}active{% endif %}">Features</a>
-    {% if has_history %}
-    <a href="{{ url_for('history') }}" class="{% if request.endpoint == 'history' %}active{% endif %}">History</a>
-    {% endif %}
-    <a href="{{ url_for('about') }}" class="{% if request.endpoint == 'about' %}active{% endif %}">About</a>
-    <a href="{{ url_for('chatbot_page') }}" class="{% if request.endpoint == 'chatbot_page' %}active{% endif %}">Chatbot</a>
-    <a href="{{ url_for('contact') }}" class="nav-btn {% if request.endpoint == 'contact' %}active{% endif %}">Contact</a>
-
-    <button class="theme-toggle" id="themeToggle" type="button">🌙</button>
+    <button class="theme-toggle" id="themeToggle" type="button" aria-label="Toggle Dark/Light Theme">🌙</button>
   </div>
-
-  <button class="menu-btn" id="menuBtn" type="button">☰</button>
 </nav>

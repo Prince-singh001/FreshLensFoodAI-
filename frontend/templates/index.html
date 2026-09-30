@@ -1,153 +1,307 @@
 <!doctype html>
 <html lang="en" data-theme="light">
-
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>SafeBite AI | Smart Food Freshness Detection</title>
-  <link rel="icon"
-    href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🥗</text></svg>">
-
+  <title>FreshLens AI | AI-Powered Food Recognition, Freshness & Safety Analysis</title>
+  <meta name="description" content="Know your food better. Capture or upload a food image and get useful insights about what you're looking at, its freshness when supported, and what you can do next." />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🥗</text></svg>">
+  <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
 </head>
-
 <body>
+  <!-- Section 1: Navigation -->
   {% include 'components/navbar.html' %}
 
-  <section class="hero">
-    <div class="hero-content">
-      <span class="badge">AI Powered Food Safety Platform</span>
-
-      <h1>Detect Fresh & Spoiled Food Instantly</h1>
-
-      <p>
-        SafeBite AI is a smart image-based food freshness detection system
-        that uses deep learning, CNN and image processing to classify food as
-        fresh or spoiled.
-      </p>
-
-      <div class="hero-actions">
-        <a href="{{ url_for('scan') }}?type=fruit" class="btn primary">Start Food Scan</a>
-        <a href="{{ url_for('features') }}" class="btn secondary">Explore Features</a>
+  <!-- Mobile Dashboard Header & Quick Actions -->
+  <section class="mobile-dashboard-section" style="padding: 16px 20px 0; max-width: 1200px; margin: 0 auto;">
+    <!-- Greeting & Brand -->
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+      <div>
+        <span style="font-size:0.85rem; font-weight:600; color:var(--primary); text-transform:uppercase; letter-spacing:0.04em;">FreshLens AI</span>
+        <h2 style="font-size:1.4rem; font-weight:800; color:var(--text); margin-top:2px;">Know Your Food Better 👋</h2>
       </div>
-
-      <div class="trust-row">
-        <div>
-          <h3>14+</h3>
-          <p>Food Classes</p>
-        </div>
-        <div>
-          <h3>CNN</h3>
-          <p>AI Model</p>
-        </div>
-        <div>
-          <h3>Fast</h3>
-          <p>Instant Result</p>
-        </div>
-      </div>
+      <a href="{{ url_for('scan') }}" class="btn primary touch-friendly" style="padding:8px 16px; font-size:0.85rem; border-radius:var(--radius-full);" aria-label="Scan food now">
+        📷 Scan Food
+      </a>
     </div>
 
-    <div class="hero-visual">
-      <div class="scanner-card">
-        <div class="scanner-top">
-          <span class="scan-dot"></span>
-          <p>Live AI Preview</p>
-        </div>
+    <!-- Quick Action Chips -->
+    <div class="quick-action-chips" role="navigation" aria-label="Quick Actions">
+      <a href="{{ url_for('scan') }}" class="action-chip">
+        <span>📷</span> Scan Food
+      </a>
+      <a href="{{ url_for('history') }}" class="action-chip">
+        <span>🕘</span> Scan History
+      </a>
+      <a href="{{ url_for('chatbot_page') }}" class="action-chip">
+        <span>🤖</span> Food Assistant
+      </a>
+      <a href="#food-insights" class="action-chip">
+        <span>💡</span> Storage Advice
+      </a>
+      <a href="{{ url_for('features') }}" class="action-chip">
+        <span>✨</span> Product Features
+      </a>
+    </div>
+  </section>
 
-        <img src="{{ url_for('static', filename='image/home_hero_scan.png') }}" alt="Food freshness scanner"
-          class="scanner-img" />
-
-        <h2>Smart Food Scanner</h2>
+  <main>
+    <!-- Section 2: Hero Section -->
+    <section class="hero" id="hero">
+      <div class="hero-content">
+        <span class="badge">AI FOOD SCANNER</span>
+        <h1>Know Your Food Better.</h1>
         <p>
-          Upload food image and get freshness prediction with confidence
-          score.
+          Capture or upload a food image and get useful insights about what you’re looking at, its freshness when supported, and what you can do next.
         </p>
 
-        <div class="preview-result">
+        <div class="hero-actions">
+          <a href="{{ url_for('scan') }}" class="btn primary" id="heroScanBtn">📷 Scan Food</a>
+          <a href="{{ url_for('chatbot_page') }}" class="btn secondary" id="heroAssistantBtn">🤖 Ask AI Assistant</a>
+        </div>
+
+        <div class="trust-row">
           <div>
-            <span>Food</span>
-            <strong>Apple</strong>
+            <h3>Instant</h3>
+            <p>Food Recognition</p>
           </div>
           <div>
-            <span>Status</span>
-            <strong class="fresh">Fresh ✅</strong>
+            <h3>Condition</h3>
+            <p>Freshness Insights</p>
           </div>
           <div>
-            <span>Confidence</span>
-            <strong>99.5%</strong>
+            <h3>Actionable</h3>
+            <p>Storage & Safety</p>
           </div>
         </div>
       </div>
-    </div>
-  </section>
 
-  <section class="category-section">
-    <div class="section-heading">
-      <span class="badge">Scan Categories</span>
-      <h2>Choose What You Want To Scan</h2>
-      <p>Scan fruits, vegetables and food items using SafeBite AI.</p>
-    </div>
+      <div class="hero-visual">
+        <div class="scanner-card">
+          <div class="scanner-top">
+            <span class="scan-dot"></span>
+            <p>Smart Food Analysis</p>
+          </div>
 
-    <div class="category-grid">
-      <a href="{{ url_for('scan') }}?type=fruit" class="category-card">
-        <img src="{{ url_for('static', filename='image/fruit_category.png') }}" alt="Fruits" />
-        <div class="cat-icon">🍎</div>
-        <h3>Fruit Scan</h3>
-        <p>Detect freshness of apple, banana, orange and more fruits.</p>
-      </a>
+          <img src="{{ url_for('static', filename='image/home_hero_scan.png') }}" 
+               alt="FreshLens AI food analysis demonstration" 
+               class="scanner-img"
+               onerror="this.src='https://images.unsplash.com/photo-1610832958506-aa56368176cf?auto=format&fit=crop&w=600&q=80'" />
 
-      <a href="{{ url_for('scan') }}?type=vegetable" class="category-card">
-        <img src="{{ url_for('static', filename='image/vegetable_category.png') }}" alt="Vegetables" />
-        <div class="cat-icon">🥦</div>
-        <h3>Vegetable Scan</h3>
-        <p>Analyze vegetables like tomato, potato and cucumber.</p>
-      </a>
+          <h2>Food Condition Overview</h2>
+          <p style="font-size:0.9rem; color:var(--text-secondary); margin-bottom:12px;">
+            Recognizes food items and evaluates condition indicators to help you make better decisions.
+          </p>
 
-      <a href="{{ url_for('scan') }}?type=food" class="category-card">
-        <img src="{{ url_for('static', filename='image/food_category.png') }}" alt="Food" />
-        <div class="cat-icon">🍱</div>
-        <h3>Food Scan</h3>
-        <p>Scan food item images and check freshness condition.</p>
-      </a>
-    </div>
-  </section>
+          <div class="preview-result">
+            <div>
+              <span>Detected Item</span>
+              <strong>Apple</strong>
+            </div>
+            <div>
+              <span>Freshness</span>
+              <strong class="status-badge fresh" style="padding:2px 8px; font-size:0.75rem;">Fresh ✅</strong>
+            </div>
+            <div>
+              <span>Confidence</span>
+              <strong style="color:var(--primary);">94.2%</strong>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
 
-  <section class="workflow-section">
-    <div class="section-heading">
-      <span class="badge">How It Works</span>
-      <h2>Simple 3-Step AI Scanning</h2>
-    </div>
-
-    <div class="workflow-grid">
-      <div class="workflow-card">
-        <span>01</span>
-        <h3>Choose Category</h3>
-        <p>Select fruit, vegetable or food category.</p>
+    <!-- Section 3: How It Works (3 Steps) -->
+    <section class="workflow-section" id="how-it-works">
+      <div class="section-heading">
+        <span class="badge">Simple 3-Step Process</span>
+        <h2>How FreshLens AI Works</h2>
+        <p>From a single image to practical, actionable food information in seconds.</p>
       </div>
 
-      <div class="workflow-card">
-        <span>02</span>
-        <h3>Upload Image</h3>
-        <p>Upload JPG, PNG, JPEG or WEBP food image.</p>
+      <div class="workflow-grid" style="grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));">
+        <div class="workflow-card">
+          <span>01</span>
+          <h3>Capture</h3>
+          <p>Take a clear photo with your phone’s camera or upload an existing food image from your device.</p>
+        </div>
+
+        <div class="workflow-card">
+          <span>02</span>
+          <h3>Analyze</h3>
+          <p>FreshLens AI processes the visual details of the food item to determine its category and freshness.</p>
+        </div>
+
+        <div class="workflow-card">
+          <span>03</span>
+          <h3>Understand</h3>
+          <p>Receive clear freshness assessments, nutritional highlights, storage advice, and safety guidelines.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 4: Food Insights Grid -->
+    <section class="category-section" id="food-insights">
+      <div class="section-heading">
+        <span class="badge">Helpful Guidance</span>
+        <h2>Food Insights for Everyday Living</h2>
+        <p>Get the practical knowledge you need to keep food fresh, reduce waste, and eat safely.</p>
       </div>
 
-      <div class="workflow-card">
-        <span>03</span>
-        <h3>Get Result</h3>
-        <p>View freshness status and confidence score.</p>
+      <div class="category-grid">
+        <div class="info-card">
+          <div class="icon">✨</div>
+          <h3>Freshness Analysis</h3>
+          <p>Know whether your fruits and vegetables are at peak freshness or showing early signs of spoilage.</p>
+        </div>
+
+        <div class="info-card">
+          <div class="icon">🛡️</div>
+          <h3>Safety Guidance</h3>
+          <p>Understand potential foodborne risks, temperature zones, and when produce is no longer safe to eat.</p>
+        </div>
+
+        <div class="info-card">
+          <div class="icon">🧊</div>
+          <h3>Storage Advice</h3>
+          <p>Learn whether items belong in the crisper drawer, refrigerator shelf, or counter for maximum shelf life.</p>
+        </div>
+
+        <div class="info-card">
+          <div class="icon">💡</div>
+          <h3>Smart Recommendations</h3>
+          <p>Receive practical ideas on handling ripening produce, preparing ingredients, and preventing spoilage.</p>
+        </div>
       </div>
-    </div>
-  </section>
+    </section>
 
-  <section class="cta-section">
-    <h2>Ready to Check Your Food?</h2>
-    <p>Start scanning food freshness with SafeBite AI.</p>
-    <a href="{{ url_for('scan') }}?type=fruit" class="btn primary">Scan Now</a>
-  </section>
+    <!-- Section 5: Supported Food Categories -->
+    <section class="category-section" id="supported-categories">
+      <div class="section-heading">
+        <span class="badge">Supported Foods</span>
+        <h2>Explore Food Categories</h2>
+        <p>FreshLens AI is trained to recognize a wide variety of everyday produce and foods.</p>
+      </div>
 
+      <div class="category-grid">
+        <a href="{{ url_for('scan') }}?type=fruit" class="category-card">
+          <div class="cat-icon">🍎</div>
+          <h3>Fresh Fruits</h3>
+          <p>Apples, bananas, oranges, mangoes, grapes, and strawberries with active freshness analysis.</p>
+        </a>
+
+        <a href="{{ url_for('scan') }}?type=vegetable" class="category-card">
+          <div class="cat-icon">🥦</div>
+          <h3>Fresh Vegetables</h3>
+          <p>Tomatoes, potatoes, cucumbers, bitter gourds, carrots, onions, and broccoli with quality checks.</p>
+        </a>
+
+        <a href="{{ url_for('scan') }}?type=food" class="category-card">
+          <div class="cat-icon">🍱</div>
+          <h3>Prepared Foods</h3>
+          <p>Sandwiches, pizza, rice dishes, bread, and pastries with storage timelines and safety advice.</p>
+        </a>
+      </div>
+    </section>
+
+    <!-- Section 6: AI Food Assistant Feature Highlight -->
+    <section style="max-width:1100px; margin:40px auto; padding:0 20px;">
+      <div style="background:var(--card); border:1px solid var(--border); border-radius:var(--radius-lg); padding:32px; box-shadow:var(--shadow-md); display:flex; justify-content:space-between; align-items:center; gap:24px; flex-wrap:wrap;">
+        <div style="max-width:620px;">
+          <span class="badge" style="margin-bottom:8px;">Your Food Companion</span>
+          <h2 style="font-size:1.6rem; font-weight:800; color:var(--text); margin-bottom:8px;">AI Food Assistant</h2>
+          <p style="color:var(--text-secondary); line-height:1.7; margin-bottom:16px;">
+            Have a question about what you just scanned? Your AI Food Assistant is ready to help with storage timelines, spoilage signs, recipe preparation ideas, and food safety questions in English or Hindi.
+          </p>
+          <div style="display:flex; gap:10px; flex-wrap:wrap;">
+            <span class="action-chip" style="cursor:default;">🍎 Storage Recommendations</span>
+            <span class="action-chip" style="cursor:default;">⚠️ Spoilage Warning Signs</span>
+            <span class="action-chip" style="cursor:default;">🥗 Nutrition Facts</span>
+          </div>
+        </div>
+        <div>
+          <a href="{{ url_for('chatbot_page') }}" class="btn primary touch-friendly" style="padding:12px 24px;">
+            Chat with Assistant ➔
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 7: Recent Scans Section (if available) -->
+    {% if recent_scans %}
+    <section style="max-width:1100px; margin:30px auto; padding:0 20px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+        <h3 style="font-size:1.2rem; font-weight:700;">Recent Scans</h3>
+        <a href="{{ url_for('history') }}" style="font-size:0.875rem; color:var(--primary); text-decoration:none; font-weight:600;">View History ➔</a>
+      </div>
+      <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(200px, 1fr)); gap:14px;">
+        {% for scan in recent_scans %}
+        <div class="detected-item-card" style="padding:14px; display:flex; gap:12px; align-items:center;">
+          <img src="{{ scan.image_url }}" alt="{{ scan.food_name }}" style="width:52px; height:52px; object-fit:cover; border-radius:var(--radius-sm);" onerror="this.src='/static/image/apple.jpg'" />
+          <div style="overflow:hidden;">
+            <strong style="font-size:0.95rem; display:block; white-space:nowrap; text-overflow:ellipsis; overflow:hidden;">{{ scan.food_name }}</strong>
+            <span class="status-badge {{ 'fresh' if scan.condition == 'Fresh' else 'spoiled' }}" style="font-size:0.75rem; padding:2px 8px; margin-top:4px;">
+              {{ scan.condition }}
+            </span>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </section>
+    {% endif %}
+
+    <!-- Section 8: Food Safety Information -->
+    <section id="food-safety">
+      <div class="section-heading">
+        <span class="badge">Food Safety Practices</span>
+        <h2>Keep Your Kitchen Safe</h2>
+        <p>Simple, reliable food safety habits that help prevent food waste and illness.</p>
+      </div>
+
+      <div class="category-grid">
+        <div class="info-card">
+          <h3>🧊 Temperature Control</h3>
+          <p>Keep your refrigerator at or below 40°F (4°C). Perishable foods left above 40°F for over two hours enter the danger zone for rapid bacterial growth.</p>
+        </div>
+
+        <div class="info-card">
+          <h3>👃 Smell & Texture Inspection</h3>
+          <p>Never taste food that looks, smells, or feels suspicious. Spoilage bacteria and molds can be harmful even if discoloration is not yet widespread.</p>
+        </div>
+
+        <div class="info-card">
+          <h3>🌿 Ethylene Isolation</h3>
+          <p>Keep high-ethylene producers like apples and bananas separated from ethylene-sensitive leafy greens, carrots, and potatoes to delay overripening.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 9: Final Call to Action -->
+    <section style="max-width:1100px; margin:40px auto 30px; padding:0 20px;">
+      <div class="cta-section" style="padding:48px 24px; text-align:center;">
+        <h2 style="font-size:1.85rem; margin-bottom:10px;">Ready to Understand Your Food?</h2>
+        <p style="max-width:540px; margin:0 auto 24px; color:var(--text-secondary);">
+          Capture or upload a food photo and let FreshLens AI provide instant freshness and safety insights.
+        </p>
+        <div style="display:flex; justify-content:center; gap:12px; flex-wrap:wrap;">
+          <a href="{{ url_for('scan') }}" class="btn primary touch-friendly" style="padding:12px 28px;">
+            Start Scanning ➔
+          </a>
+          <a href="{{ url_for('chatbot_page') }}" class="btn secondary touch-friendly" style="padding:12px 24px;">
+            Ask AI Assistant
+          </a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Section 10: Footer -->
   {% include 'components/footer.html' %}
+
+  <!-- Mobile Bottom Navigation Bar -->
+  {% include 'components/bottom_nav.html' %}
 
   <script src="{{ url_for('static', filename='js/main.js') }}"></script>
 </body>
-
 </html>

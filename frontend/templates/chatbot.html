@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>SafeBite AI Assistant | Food Chatbot</title>
+    <title>FreshLens AI Assistant | Food Chatbot</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🥗</text></svg>">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
     <style>
@@ -232,18 +232,43 @@
           <div class="chat-bot-profile">
             <div class="bot-avatar">🤖</div>
             <div class="bot-info">
-              <h2>SafeBite Assistant</h2>
+              <h2>Your Food Assistant</h2>
               <div class="bot-status">
                 <span class="status-dot"></span>
-                <span>Active Online</span>
+                <span>Online • Ready to Help</span>
               </div>
             </div>
           </div>
+
+          <!-- Multilingual Language Selector (EN / HI) -->
+          <div class="lang-selector-group" role="group" aria-label="Language Selector">
+            <button class="lang-btn active" id="langEnBtn" type="button" data-lang="en">EN</button>
+            <button class="lang-btn" id="langHiBtn" type="button" data-lang="hi">हिन्दी</button>
+          </div>
+        </div>
+
+        <!-- Active Scan Context Alert Banner (if forwarded from scanner) -->
+        <div id="scanContextBanner" style="display:none; background:linear-gradient(90deg, rgba(5,150,105,0.1), rgba(14,165,233,0.1)); border-bottom:1px solid var(--border); padding:10px 20px; font-size:0.85rem; align-items:center; justify-content:space-between;">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span>📷 Active Scan:</span>
+            <strong id="scanContextItem">Apple</strong>
+            <span class="status-badge fresh" id="scanContextBadge" style="font-size:0.7rem; padding:2px 8px;">Fresh</span>
+          </div>
+          <button id="clearScanContextBtn" type="button" style="background:none; border:none; color:var(--muted); font-size:0.8rem; cursor:pointer;">✕ Dismiss</button>
         </div>
 
         <div class="chat-messages" id="chatMessages">
-          <div class="message-bubble bot">
-            Hello! I am your SafeBite AI assistant. I can help you with food storage tips, food safety guidelines, or explain how the SafeBite AI scanner works. What can I help you with today?
+          <div class="message-bubble bot" id="welcomeBubble">
+            Hello! I am your Food Assistant. I can help with food storage recommendations, safety guidance, freshness questions, preparation ideas, nutrition facts, and follow-ups on your scanned items. What would you like to know?
+          </div>
+
+          <!-- Quick Suggestion Pills -->
+          <div id="quickPromptsContainer" style="display:flex; gap:8px; flex-wrap:wrap; margin-top:4px;">
+            <button class="action-chip quick-prompt-btn" type="button" data-prompt="How should I store apples?">🍎 Store apples</button>
+            <button class="action-chip quick-prompt-btn" type="button" data-prompt="How to know if produce is spoiled?">⚠️ Spoilage signs</button>
+            <button class="action-chip quick-prompt-btn" type="button" data-prompt="How to keep bananas fresh longer?">🍌 Banana storage</button>
+            <button class="action-chip quick-prompt-btn" type="button" data-prompt="What is the 2-hour refrigerator rule?">🧊 2-hour safety rule</button>
+            <button class="action-chip quick-prompt-btn" type="button" data-prompt="भोजन को सुरक्षित कैसे स्टोर करें?">🇮🇳 स्टोर गाइड (Hindi)</button>
           </div>
           
           <div class="typing-indicator" id="typingIndicator">
@@ -254,8 +279,8 @@
         </div>
 
         <div class="chat-input-area">
-          <input type="text" class="chat-input-box" id="chatInput" placeholder="Ask about storage, safety or scanner..." autocomplete="off" />
-          <button class="chat-send-btn" id="chatSendBtn" type="button">
+          <input type="text" class="chat-input-box" id="chatInput" placeholder="Ask about storage, safety, or your scan..." autocomplete="off" />
+          <button class="chat-send-btn touch-friendly" id="chatSendBtn" type="button">
             Send ➔
           </button>
         </div>
@@ -264,34 +289,102 @@
 
     {% include 'components/footer.html' %}
 
+    <!-- Mobile Bottom Navigation Bar -->
+    {% include 'components/bottom_nav.html' %}
+
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
     <script>
       const chatMessages = document.getElementById("chatMessages");
       const chatInput = document.getElementById("chatInput");
       const chatSendBtn = document.getElementById("chatSendBtn");
       const typingIndicator = document.getElementById("typingIndicator");
+      const langEnBtn = document.getElementById("langEnBtn");
+      const langHiBtn = document.getElementById("langHiBtn");
+      const scanContextBanner = document.getElementById("scanContextBanner");
+      const scanContextItem = document.getElementById("scanContextItem");
+      const scanContextBadge = document.getElementById("scanContextBadge");
+      const clearScanContextBtn = document.getElementById("clearScanContextBtn");
+      const quickPromptBtns = document.querySelectorAll(".quick-prompt-btn");
+      const welcomeBubble = document.getElementById("welcomeBubble");
+
+      // State Management
+      let currentLanguage = localStorage.getItem("freshlens_lang") || "en";
+      let conversationId = sessionStorage.getItem("freshlens_conv_id") || ("conv_" + Date.now() + "_" + Math.random().toString(36).substr(2, 6));
+      sessionStorage.setItem("freshlens_conv_id", conversationId);
+
+      let activeScanContext = null;
+      try {
+        const storedScan = sessionStorage.getItem("freshlens_active_scan");
+        if (storedScan) {
+          activeScanContext = JSON.parse(storedScan);
+        }
+      } catch (e) {
+        console.warn("Could not parse scan context:", e);
+      }
+
+      // Update Language UI
+      function setLanguage(lang) {
+        currentLanguage = lang;
+        localStorage.setItem("freshlens_lang", lang);
+        if (lang === "hi") {
+          langHiBtn.classList.add("active");
+          langEnBtn.classList.remove("active");
+          if (welcomeBubble) {
+            welcomeBubble.textContent = "नमस्ते! मैं आपका Food Assistant हूँ। आप मुझसे भोजन भंडारण (स्टोरेज), ताजगी, सुरक्षा नियमों या स्कैन किए गए भोजन के बारे में पूछ सकते हैं।";
+          }
+          chatInput.placeholder = "भोजन भंडारण या सुरक्षा के बारे में पूछें...";
+        } else {
+          langEnBtn.classList.add("active");
+          langHiBtn.classList.remove("active");
+          if (welcomeBubble) {
+            welcomeBubble.textContent = "Hello! I am your Food Assistant. I can help with food storage recommendations, safety guidance, freshness questions, preparation ideas, nutrition facts, and follow-ups on your scanned items. What would you like to know?";
+          }
+          chatInput.placeholder = "Ask about storage, safety, or your scan...";
+        }
+      }
+
+      langEnBtn.addEventListener("click", () => setLanguage("en"));
+      langHiBtn.addEventListener("click", () => setLanguage("hi"));
+      setLanguage(currentLanguage);
+
+      // Setup Scan Context Banner
+      if (activeScanContext && activeScanContext.item) {
+        scanContextItem.textContent = `${activeScanContext.item}`;
+        scanContextBadge.textContent = activeScanContext.freshness || "Detected";
+        scanContextBadge.className = `status-badge ${activeScanContext.freshness === "Fresh" ? "fresh" : (activeScanContext.freshness === "Spoiled" ? "spoiled" : "neutral")}`;
+        scanContextBanner.style.display = "flex";
+      }
+
+      if (clearScanContextBtn) {
+        clearScanContextBtn.addEventListener("click", () => {
+          activeScanContext = null;
+          sessionStorage.removeItem("freshlens_active_scan");
+          scanContextBanner.style.display = "none";
+        });
+      }
+
+      // Quick prompt click handlers
+      quickPromptBtns.forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const prompt = btn.getAttribute("data-prompt");
+          chatInput.value = prompt;
+          sendMessage();
+        });
+      });
 
       function formatResponse(text) {
-        // Simple Markdown parsing for bullet points and bold styling
         let formatted = text;
-        
-        // Escape HTML tags slightly
         formatted = formatted.replace(/</g, "&lt;").replace(/>/g, "&gt;");
-        
-        // Bold formatting **text** -> <strong>text</strong>
         formatted = formatted.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
         
-        // Bullet points - list conversion
         if (formatted.includes("\n- ")) {
           const parts = formatted.split("\n- ");
           let intro = parts[0];
           let listItems = parts.slice(1).map(item => `<li>${item.replace(/\n/g, "<br>")}</li>`).join("");
           formatted = `${intro}<ul>${listItems}</ul>`;
         } else {
-          // Replace remaining newlines with <br>
           formatted = formatted.replace(/\n/g, "<br>");
         }
-        
         return formatted;
       }
 
@@ -303,10 +396,9 @@
         const queryText = chatInput.value.trim();
         if (!queryText) return;
 
-        // Clear input box
         chatInput.value = "";
 
-        // Append User message
+        // User bubble
         const userBubble = document.createElement("div");
         userBubble.className = "message-bubble user";
         userBubble.textContent = queryText;
@@ -318,24 +410,42 @@
         scrollToBottom();
 
         try {
-          const response = await fetch("/chat", {
+          const response = await fetch("/api/v1/chat", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ message: queryText })
+            body: JSON.stringify({
+              message: queryText,
+              conversation_id: conversationId,
+              language: currentLanguage,
+              scan_context: activeScanContext
+            })
           });
-          const data = await response.json();
 
-          // Hide indicator
+          const data = await response.json();
           typingIndicator.style.display = "none";
 
-          // Append Bot Response
           const botBubble = document.createElement("div");
           botBubble.className = "message-bubble bot";
-          if (data.response) {
-            botBubble.innerHTML = formatResponse(data.response);
-          } else {
-            botBubble.textContent = data.error || "Sorry, I encountered an error. Please try again.";
+
+          let answer = data.answer || data.response || "I am currently unable to answer that.";
+          let html = `<div>${formatResponse(answer)}</div>`;
+
+          // Append RAG Sources if present
+          if (data.sources && data.sources.length > 0) {
+            html += `<div class="rag-sources-container">`;
+            data.sources.forEach(src => {
+              html += `
+                <div class="rag-source-chip">
+                  <span>📚 Reference:</span>
+                  <strong>${src.title || src.source}</strong>
+                  ${src.url ? `<a href="${src.url}" target="_blank" rel="noopener">Guideline</a>` : ''}
+                </div>
+              `;
+            });
+            html += `</div>`;
           }
+
+          botBubble.innerHTML = html;
           chatMessages.insertBefore(botBubble, typingIndicator);
           scrollToBottom();
 
@@ -345,7 +455,9 @@
           
           const errorBubble = document.createElement("div");
           errorBubble.className = "message-bubble bot";
-          errorBubble.textContent = "Failed to connect to the server. Please check your connection and retry.";
+          errorBubble.textContent = currentLanguage === "hi" 
+            ? "सर्वर से कनेक्ट करने में विफल। कृपया अपना इंटरनेट कनेक्शन जांचें और पुनः प्रयास करें।"
+            : "Failed to connect to the server. Please check your connection and retry.";
           chatMessages.insertBefore(errorBubble, typingIndicator);
           scrollToBottom();
         }
@@ -359,7 +471,6 @@
         }
       });
       
-      // Auto focus chat input on page load
       window.addEventListener("DOMContentLoaded", () => {
         chatInput.focus();
       });

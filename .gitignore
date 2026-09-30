@@ -83,6 +83,46 @@ tmp/
 # Model (Choose ONE option)
 # =========================
 
+# =========================
+# Local Virtual Environment
+# =========================
+.venv/
+
+# =========================
+# Trained / Generated Models
+# =========================
+models/
+
+# =========================
+# Reports / Generated Outputs
+# =========================
+reports/
+
+# =========================
+# Training / Development Files
+# =========================
+training/
+
+# =========================
+# Local Tools / Generated Files
+# =========================
+tools/
+
+
+# YOLO model weights
+*.pt
+
+# Runtime scan history
+backend/history.json
+
+# ML datasets
+backend/data/*`r`n!backend/data/classes.json
+
+# ML datasets and generated data
+backend/data/*
+!backend/data/classes.json
+
+
 # OPTION 1:
 # Uncomment if you DO NOT want to upload trained model
 # backend/models/

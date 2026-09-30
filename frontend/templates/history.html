@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Scan History | SafeBite AI</title>
+    <title>Scan History | FreshLens AI</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🥗</text></svg>">
     <link
       rel="stylesheet"
@@ -14,26 +14,53 @@
   <body>
     {% include 'components/navbar.html' %}
 
-    <section class="history-hero">
-      <span class="badge">Activity Log</span>
-      <h1>Scan History</h1>
-      <p>
-        View the history of all analyzed food scans, detected items, and conditions.
+    <section class="history-hero" style="padding: 24px 20px 10px; text-align: center;">
+      <span class="badge">Scan History</span>
+      <h1 style="font-size: 1.6rem; margin-top: 4px;">Produce Scan Activity</h1>
+      <p style="color:var(--text-secondary); font-size:0.9rem; max-width:600px; margin:6px auto 0;">
+        Review previous produce and food analyses, condition ratings, and freshness confidence scores.
       </p>
     </section>
 
+    <!-- Search & Filter Controls -->
+    <div style="max-width: 900px; margin: 12px auto 20px; padding: 0 16px;">
+      <!-- Search Input -->
+      <div style="margin-bottom: 12px;">
+        <input type="text" id="historySearchInput" placeholder="🔍 Search history by food name or category..." 
+               style="width: 100%; padding: 12px 16px; border-radius: var(--radius-md); border: 1px solid var(--border); background: var(--card); color: var(--text); font-size: 0.92rem; outline: none; box-shadow: var(--shadow-sm);" />
+      </div>
+
+      <!-- Filter Chips -->
+      <div class="quick-action-chips" style="padding: 0 0 8px; justify-content: flex-start;">
+        <button class="action-chip active-filter" data-filter="all" type="button" id="filterAll" style="cursor: pointer; background: var(--primary); color: #fff;">
+          All
+        </button>
+        <button class="action-chip" data-filter="fresh" type="button" id="filterFresh" style="cursor: pointer;">
+          Fresh ✅
+        </button>
+        <button class="action-chip" data-filter="spoiled" type="button" id="filterSpoiled" style="cursor: pointer;">
+          Spoiled ⚠️
+        </button>
+        <button class="action-chip" data-filter="other" type="button" id="filterOther" style="cursor: pointer;">
+          Other / Food
+        </button>
+      </div>
+    </div>
+
     <div class="history-container">
       {% if history %}
-        <div class="history-actions-bar">
-          <span>Showing {{ history|length }} recent scan{{ 's' if history|length > 1 else '' }}</span>
-          <button class="clear-history-btn" id="clearHistoryBtn" type="button">🗑️ Clear History</button>
+        <div class="history-actions-bar" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+          <span id="historyCountText">Showing {{ history|length }} recent scan{{ 's' if history|length > 1 else '' }}</span>
+          <button class="clear-history-btn touch-friendly" id="clearHistoryBtn" type="button" style="padding: 6px 14px; border-radius: var(--radius-md); background: var(--spoiled-bg); color: var(--spoiled); border: 1px solid rgba(239,68,68,0.3); font-weight: 600; cursor: pointer;">
+            🗑️ Clear History
+          </button>
         </div>
 
-        <div class="history-grid">
+        <div class="history-grid" id="historyGrid">
           {% for item in history %}
-            <div class="history-card">
+            <div class="history-card" data-food="{{ item.food_name|lower }}" data-category="{{ item.detected_category|lower }}" data-condition="{{ item.condition|lower }}" style="cursor: pointer;">
               <div class="history-img-box">
-                <img src="{{ item.image_url }}" alt="{{ item.food_name }}" />
+                <img src="{{ item.image_url }}" alt="{{ item.food_name }}" onerror="this.src='/static/image/apple.jpg'" />
                 <span class="status-badge {{ 'fresh' if item.condition == 'Fresh' else 'spoiled' }}">
                   {{ 'Fresh ✅' if item.condition == 'Fresh' else 'Spoiled ⚠️' }}
                 </span>
@@ -48,10 +75,6 @@
                   <div class="meta-row">
                     <span>Category:</span>
                     <strong>{{ item.detected_category }}</strong>
-                  </div>
-                  <div class="meta-row">
-                    <span>Selected Category:</span>
-                    <strong>{{ item.selected_category }}</strong>
                   </div>
                   <div class="meta-row timestamp">
                     <span>Time:</span>
@@ -81,8 +104,69 @@
 
     {% include 'components/footer.html' %}
 
+    <!-- Mobile Bottom Navigation Bar -->
+    {% include 'components/bottom_nav.html' %}
+
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
     <script>
+      // 1. Search & Filter Behavior
+      const searchInput = document.getElementById('historySearchInput');
+      const filterChips = document.querySelectorAll('.quick-action-chips .action-chip');
+      const cards = document.querySelectorAll('.history-card');
+      const historyCountText = document.getElementById('historyCountText');
+      let currentFilter = 'all';
+
+      function applyFilterAndSearch() {
+        const query = searchInput ? searchInput.value.toLowerCase().trim() : '';
+        let visibleCount = 0;
+
+        cards.forEach(card => {
+          const food = card.getAttribute('data-food') || '';
+          const category = card.getAttribute('data-category') || '';
+          const condition = card.getAttribute('data-condition') || '';
+
+          const matchesSearch = !query || food.includes(query) || category.includes(query);
+          
+          let matchesFilter = true;
+          if (currentFilter === 'fresh') {
+            matchesFilter = condition === 'fresh';
+          } else if (currentFilter === 'spoiled') {
+            matchesFilter = condition === 'spoiled';
+          } else if (currentFilter === 'other') {
+            matchesFilter = condition !== 'fresh' && condition !== 'spoiled';
+          }
+
+          if (matchesSearch && matchesFilter) {
+            card.style.display = 'flex';
+            visibleCount++;
+          } else {
+            card.style.display = 'none';
+          }
+        });
+
+        if (historyCountText) {
+          historyCountText.textContent = `Showing ${visibleCount} scan${visibleCount === 1 ? '' : 's'}`;
+        }
+      }
+
+      if (searchInput) {
+        searchInput.addEventListener('input', applyFilterAndSearch);
+      }
+
+      filterChips.forEach(chip => {
+        chip.addEventListener('click', () => {
+          filterChips.forEach(c => {
+            c.style.background = 'var(--card)';
+            c.style.color = 'var(--text)';
+          });
+          chip.style.background = 'var(--primary)';
+          chip.style.color = '#fff';
+          currentFilter = chip.getAttribute('data-filter') || 'all';
+          applyFilterAndSearch();
+        });
+      });
+
+      // 2. Clear History Handler
       const clearBtn = document.getElementById('clearHistoryBtn');
       if (clearBtn) {
         clearBtn.addEventListener('click', async () => {

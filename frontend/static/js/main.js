@@ -1,52 +1,64 @@
-console.log("SafeBite AI loaded successfully");
+/**
+ * FreshLens AI - Global Client Scripts
+ * Theme toggle, mobile drawer navigation, and PWA service worker registration.
+ */
 
-const themeToggle = document.getElementById("themeToggle");
-const menuBtn = document.getElementById("menuBtn");
-const navLinks = document.getElementById("navLinks");
+document.addEventListener("DOMContentLoaded", () => {
+  const themeToggle = document.getElementById("themeToggle");
+  const menuBtn = document.getElementById("menuBtn");
+  const navLinks = document.getElementById("navLinks");
 
-const scanBtn = document.getElementById("scanBtn");
-const scanMenu = document.getElementById("scanMenu");
-
-const savedTheme = localStorage.getItem("theme");
-
-if (savedTheme) {
+  // 1. Theme Initialization & Toggle
+  const savedTheme = localStorage.getItem("freshlens_theme") || localStorage.getItem("safebite_theme") || "light";
   document.documentElement.setAttribute("data-theme", savedTheme);
+  updateThemeIcon(savedTheme);
 
   if (themeToggle) {
-    themeToggle.textContent = savedTheme === "dark" ? "☀️" : "🌙";
+    themeToggle.addEventListener("click", () => {
+      const current = document.documentElement.getAttribute("data-theme");
+      const nextTheme = current === "dark" ? "light" : "dark";
+      document.documentElement.setAttribute("data-theme", nextTheme);
+      localStorage.setItem("freshlens_theme", nextTheme);
+      updateThemeIcon(nextTheme);
+    });
   }
-}
 
-if (themeToggle) {
-  themeToggle.addEventListener("click", () => {
-    const currentTheme = document.documentElement.getAttribute("data-theme");
-    const newTheme = currentTheme === "dark" ? "light" : "dark";
+  function updateThemeIcon(theme) {
+    if (themeToggle) {
+      themeToggle.textContent = theme === "dark" ? "☀️" : "🌙";
+      themeToggle.setAttribute("aria-label", `Switch to ${theme === "dark" ? "light" : "dark"} mode`);
+    }
+  }
 
-    document.documentElement.setAttribute("data-theme", newTheme);
-    localStorage.setItem("theme", newTheme);
+  // 2. Mobile Drawer Navigation
+  if (menuBtn && navLinks) {
+    menuBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      navLinks.classList.toggle("active");
+      const isOpen = navLinks.classList.contains("active");
+      menuBtn.textContent = isOpen ? "✕" : "☰";
+    });
 
-    themeToggle.textContent = newTheme === "dark" ? "☀️" : "🌙";
-  });
-}
+    // Close menu when clicking outside
+    document.addEventListener("click", (e) => {
+      if (!navLinks.contains(e.target) && e.target !== menuBtn) {
+        navLinks.classList.remove("active");
+        menuBtn.textContent = "☰";
+      }
+    });
+  }
 
-if (menuBtn && navLinks) {
-  menuBtn.addEventListener("click", () => {
-    navLinks.classList.toggle("active");
-  });
-}
-
-if (scanBtn && scanMenu) {
-  scanBtn.addEventListener("click", (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    scanMenu.classList.toggle("show");
-  });
-
-  scanMenu.addEventListener("click", (e) => {
-    e.stopPropagation();
-  });
-
-  document.addEventListener("click", () => {
-    scanMenu.classList.remove("show");
-  });
-}
+  // 3. Register PWA Service Worker
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => {
+      navigator.serviceWorker
+        .register("/static/js/sw.js")
+        .then((reg) => {
+          console.log("FreshLens AI ServiceWorker registered:", reg.scope);
+        })
+        .catch((err) => {
+          console.warn("ServiceWorker registration skipped:", err);
+        });
+    });
+  }
+});

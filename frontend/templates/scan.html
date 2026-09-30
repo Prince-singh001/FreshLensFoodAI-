@@ -1,260 +1,312 @@
 <!doctype html>
 <html lang="en" data-theme="light">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Food Scanner | FreshLens AI</title>
+  <meta name="description" content="Capture or upload a food image and let FreshLens AI analyze what's in front of you. Get instant produce recognition, freshness assessments, and food safety advice." />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🥗</text></svg>" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+</head>
+<body>
+  {% include 'components/navbar.html' %}
 
-    <title>SafeBite AI | Food Scanner</title>
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🥗</text></svg>">
-
-    <link
-      rel="stylesheet"
-      href="{{ url_for('static', filename='css/style.css') }}"
-    />
-  </head>
-
-  <body>
-    {% include 'components/navbar.html' %}
-
-    <!-- Hero -->
+  <main>
+    <!-- Section 1: Scan Page Hero -->
     <section class="scan-hero">
-      <div class="hero-text-centered">
-        <span class="badge">AI Powered Food Detection</span>
-        <h1>Detect Food Freshness Using Deep Learning</h1>
-        <p>
-          Upload a fruit, vegetable, or food image, or start a live webcam scan. 
-          SafeBite AI will instantly identify the item, freshness condition, and compile a match probability breakdown.
-        </p>
+      <span class="badge">AI FOOD SCANNER</span>
+      <h1>Know Your Food Better.</h1>
+      <p>Capture or upload a food image and let FreshLens AI analyze what’s in front of you.</p>
+
+      <!-- Segmented Mode Controller (Live Scan vs Upload Image) -->
+      <div class="scan-mode-container" role="tablist" aria-label="Scanner Input Mode">
+        <div class="scan-mode-switch">
+          <button type="button" class="mode-switch-btn active" id="modeUploadBtn" role="tab" aria-selected="true" aria-controls="uploadModePanel">
+            🖼️ Upload Image
+          </button>
+          <button type="button" class="mode-switch-btn" id="modeLiveBtn" role="tab" aria-selected="false" aria-controls="liveModePanel">
+            📷 Live Scan
+          </button>
+        </div>
+      </div>
+
+      <!-- Category Filter Tabs -->
+      <div class="scan-tabs" role="tablist" aria-label="Produce Category Filter">
+        <button class="tab-btn active" data-type="all" type="button" role="tab" id="tabAll">🔍 All Foods</button>
+        <button class="tab-btn" data-type="fruit" type="button" role="tab" id="tabFruit">🍎 Fruits</button>
+        <button class="tab-btn" data-type="vegetable" type="button" role="tab" id="tabVegetable">🥦 Vegetables</button>
+        <button class="tab-btn" data-type="food" type="button" role="tab" id="tabFood">🍱 Prepared Foods</button>
       </div>
     </section>
 
-    <!-- Scan Tabs -->
-
-    <section class="scan-tabs">
-      <button class="tab-btn active" data-type="fruit" type="button">
-        🍎 Fruit Scan
-      </button>
-
-      <button class="tab-btn" data-type="vegetable" type="button">
-        🥦 Vegetable Scan
-      </button>
-
-      <button class="tab-btn" data-type="food" type="button">
-        🍱 Food Scan
-      </button>
-    </section>
-
-    <!-- Main Scan Area -->
-
+    <!-- Section 2: Main Scanner Grid -->
     <section class="scan-box">
-      <!-- Upload Card -->
+      <!-- Left Column: Scanner / Upload Card -->
+      <div class="upload-card" id="scannerPanel">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+          <h2 id="scanTitle" style="font-size:1.25rem;">Food Scanner</h2>
+          <span class="badge" id="modeIndicatorBadge" style="margin:0; font-size:0.75rem;">Upload Mode</span>
+        </div>
+        <p id="scanDesc" style="color:var(--text-secondary); font-size:0.875rem; margin-bottom:14px;">
+          Choose a clear photo of produce or food to begin AI analysis.
+        </p>
 
-      <div class="upload-card">
-        <h2 id="scanTitle">Fruit Freshness Scan</h2>
+        <!-- UPLOAD MODE PANEL -->
+        <div id="uploadModePanel">
+          <label for="foodImage" class="upload-area" id="uploadArea" aria-label="Upload Food Image File">
+            <input type="file" id="foodImage" accept="image/*" capture="environment" hidden />
 
-        <p id="scanDesc">Upload fruit image like apple, banana or orange.</p>
+            <div id="previewBox">
+              <span class="upload-icon">📷</span>
+              <h3 style="font-size:1.1rem; margin-bottom:4px;">Drop your food image here</h3>
+              <p style="color:var(--muted); font-size:0.85rem;">or choose an image from your device (JPG, PNG, WEBP)</p>
+            </div>
 
-        <label for="foodImage" class="upload-area" id="uploadArea">
-          <input type="file" id="foodImage" accept="image/*" hidden />
-
-          <div id="previewBox">
-            <span class="upload-icon"> 📷 </span>
-
-            <h3>Click To Upload Image</h3>
-
-            <p>JPG • JPEG • PNG • WEBP</p>
-          </div>
-
-          <div class="upload-scanner-line" id="uploadScannerLine" style="display: none;"></div>
-
-          <div class="progress-overlay" id="progressOverlay" style="display: none;">
-            <div class="progress-spinner-box">
-              <span class="progress-spinner">⏳</span>
-              <h4 id="progressStepText">Initializing Scan...</h4>
-              <div class="progress-bar-inner-wrap">
-                <div class="progress-bar-inner" id="progressBarInner" style="width: 0%;"></div>
+            <!-- Honest Progress Overlay (Zero fake percentages) -->
+            <div class="progress-overlay" id="progressOverlay" style="display: none;">
+              <div class="progress-spinner-box">
+                <span style="font-size:2rem; display:block; margin-bottom:8px;">⏳</span>
+                <h4 id="progressStepText" style="font-size:0.95rem; font-weight:700;">Analyzing your food...</h4>
+                <p style="font-size:0.8rem; color:var(--muted); margin-top:4px;">FreshLens AI is examining the image</p>
+                <div class="progress-bar-inner-wrap">
+                  <div class="progress-bar-inner" id="progressBarInner" style="width: 20%;"></div>
+                </div>
               </div>
             </div>
-          </div>
-        </label>
+          </label>
 
-        <!-- Camera Area -->
-        <div id="cameraArea" class="camera-card-preview" style="display: none;">
-          <div class="scanner-viewfinder">
-            <span class="corner top-left"></span>
-            <span class="corner top-right"></span>
-            <span class="corner bottom-left"></span>
-            <span class="corner bottom-right"></span>
-            <div class="scanner-line"></div>
+          <!-- Image Preview Action Controls (hidden until image loaded) -->
+          <div class="preview-actions-bar" id="previewActionsBar" style="display: none;">
+            <button type="button" class="btn secondary touch-friendly" id="replaceImageBtn" style="padding:6px 14px; font-size:0.85rem;">
+              🔄 Replace Image
+            </button>
+            <button type="button" class="btn secondary touch-friendly" id="removeImageBtn" style="padding:6px 14px; font-size:0.85rem; color:var(--spoiled);">
+              ✕ Remove
+            </button>
           </div>
-          <video id="webcam" autoplay playsinline></video>
-          <button type="button" class="capture-btn" id="captureImage">
-            📷 Capture Image
-          </button>
+
+          <!-- Quick Test Samples -->
+          <div class="sample-produce-bar">
+            <p style="font-size:0.825rem; font-weight:600; color:var(--muted);">⚡ Quick Test Samples:</p>
+            <div class="sample-produce-chips">
+              <button class="btn secondary sample-btn touch-friendly" style="padding:6px 12px; font-size:0.825rem;" data-image="/static/image/apple.jpg" data-type="fruit" type="button">🍎 Apple</button>
+              <button class="btn secondary sample-btn touch-friendly" style="padding:6px 12px; font-size:0.825rem;" data-image="/static/image/banana.jpg" data-type="fruit" type="button">🍌 Banana</button>
+              <button class="btn secondary sample-btn touch-friendly" style="padding:6px 12px; font-size:0.825rem;" data-image="/static/image/tomato.jpg" data-type="vegetable" type="button">🍅 Tomato</button>
+              <button class="btn secondary sample-btn touch-friendly" style="padding:6px 12px; font-size:0.825rem;" data-image="/static/image/spoiled_pizza.jpg" data-type="food" type="button">🍕 Pizza</button>
+            </div>
+          </div>
         </div>
 
-        <!-- Buttons -->
+        <!-- LIVE SCAN CAMERA PANEL -->
+        <div id="liveModePanel" style="display: none;">
+          <!-- Camera Viewfinder with Overlay Scanning Frame -->
+          <div class="scanner-viewport-frame" id="cameraArea">
+            <video id="webcam" autoplay playsinline muted aria-label="Live camera preview"></video>
+            
+            <div class="scanner-crosshair-overlay">
+              <div class="viewfinder-instruction-pill" id="cameraStatusPill">Place your food inside the frame</div>
+              <div class="viewfinder-guide-box">
+                <div class="scanner-laser-line"></div>
+              </div>
+            </div>
 
+            <!-- In-Viewfinder Camera Shutter Controls -->
+            <div class="camera-controls-bar">
+              <button type="button" class="camera-aux-btn" id="switchCameraBtn" aria-label="Switch front/back camera" title="Flip Camera">
+                🔄
+              </button>
+              <button type="button" class="shutter-btn" id="captureImage" aria-label="Capture Photo" title="Take Photo" disabled>
+                📸
+              </button>
+              <button type="button" class="camera-aux-btn" id="closeCameraBtn" aria-label="Close camera" title="Close Camera">
+                ✕
+              </button>
+            </div>
+          </div>
+
+          <!-- Camera Denial / Unavailable Error Card -->
+          <div class="camera-error-state" id="cameraErrorState" style="display: none;">
+            <span id="cameraErrorIcon" style="font-size:2rem; display:block; margin-bottom:8px;">📷</span>
+            <h3 id="cameraErrorTitle" style="font-size:1.1rem; margin-bottom:6px;">Camera access is unavailable</h3>
+            <p id="cameraErrorMessage" style="color:var(--text-secondary); font-size:0.85rem; max-width:380px; margin:0 auto 16px;">
+              Camera permission was denied or no video input device was found. You can allow camera access in browser settings or upload an image instead.
+            </p>
+            <div style="display:flex; justify-content:center; gap:10px; flex-wrap:wrap;">
+              <button type="button" class="btn primary touch-friendly" id="retryCameraBtn" style="padding:8px 18px; font-size:0.85rem;">
+                Try Again
+              </button>
+              <button type="button" class="btn secondary touch-friendly" id="fallbackUploadBtn" style="padding:8px 18px; font-size:0.85rem;">
+                Upload Image Instead
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Pre-flight Image Quality Toast -->
+        <div class="quality-toast-box" id="qualityToast" style="display: none;">
+          <span>⚠️</span>
+          <span id="qualityToastMessage">Image quality warning.</span>
+        </div>
+
+        <!-- Primary Action CTA -->
         <div class="scan-actions">
-          <button class="scan-btn" id="scanNow" type="button">
-            🔍 Analyze Image
+          <button class="scan-btn touch-friendly" id="scanNow" type="button">
+            <span>🔍 Analyze Food</span>
           </button>
-
-          <button class="live-btn" id="liveScan" type="button">
-            📸 Live Scan
+          <button class="reset-btn touch-friendly" id="resetScan" type="button" style="padding:13px 20px; font-weight:600;">
+            🔄 Reset
           </button>
-
-          <button class="reset-btn" id="resetScan" type="button">
-            🔄 Reload Scan
-          </button>
-        </div>
-
-        <!-- Sample Images Section -->
-        <div class="sample-images-section">
-          <p class="sample-title">⚡ Try these sample images:</p>
-          <div class="sample-buttons">
-            <button class="sample-btn" data-image="/static/image/apple.jpg" data-type="fruit" type="button">
-              🍎 Fresh Apple
-            </button>
-            <button class="sample-btn" data-image="/static/image/spoiled_pizza.jpg" data-type="food" type="button">
-              🍕 Spoiled Pizza
-            </button>
-          </div>
         </div>
       </div>
 
-      <!-- Result Card -->
-
-      <div class="result-card">
-        <span class="badge"> AI Prediction Result </span>
-
-        <h2>Scan Results</h2>
-
-        <div class="result-row">
-          <span>Selected Category</span>
-          <strong id="resultSelectedCategory"> Fruit </strong>
+      <!-- Right Column: Scan Result Card -->
+      <div class="result-card" id="resultCard">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+          <span class="badge" style="margin:0;">Analysis Result</span>
         </div>
 
-        <div class="result-row">
-          <span>Detected Category</span>
-          <strong id="resultDetectedCategory"> Waiting... </strong>
+        <!-- Error Box -->
+        <div class="error-box" id="scanErrorBox" style="display: none;">
+          <span style="font-size:1.25rem;">⚠️</span>
+          <div>
+            <strong id="scanErrorCode" style="display:block;">Error</strong>
+            <span id="scanErrorMessage">Please try again with a clearer food photo.</span>
+          </div>
         </div>
 
-        <div class="result-row">
-          <span>Food Name</span>
-          <strong id="foodName"> Waiting... </strong>
-        </div>
-
-        <div class="result-row">
-          <span>Freshness Status</span>
-          <strong class="fresh" id="resultStatus"> Waiting... </strong>
-        </div>
-
-        <div class="result-row">
-          <span>Confidence Score</span>
-          <strong id="resultConfidence"> --% </strong>
-        </div>
-
+        <!-- Category Advisory Box -->
         <div class="warning-box" id="categoryWarningBox" style="display: none;">
-          <span class="warning-icon">⚠️</span>
+          <span>💡</span>
           <span id="categoryWarningMessage"></span>
         </div>
 
-        <div class="stability-box" id="stabilityWarningBox" style="display: none;">
-          <span class="stability-icon">💡</span>
-          <span id="stabilityWarningMessage"></span>
+        <!-- Annotated Bounding Box Image Preview -->
+        <div id="annotatedImageBox" style="margin:16px 0; display:none; text-align:center;">
+          <img id="annotatedImage" src="" alt="Annotated detection results" style="max-height:250px; margin:0 auto; border-radius:var(--radius-md); box-shadow:var(--shadow-sm);" />
         </div>
 
-        <div class="top-predictions-container" id="topPredictionsContainer" style="display: none;">
-          <h3 class="breakdown-title">Match Probability Breakdown</h3>
-          <div class="top-predictions-list" id="topPredictionsList">
-            <!-- Dynamic elements will be inserted here -->
+        <!-- Summary Statistics Bar -->
+        <div id="resultSummaryBar" style="display:none; padding:10px 16px; background:var(--bg-alt); border-radius:var(--radius-md); margin-bottom:16px; font-size:0.875rem;">
+          <span id="summaryText"><strong>Detected Objects:</strong> 0</span>
+        </div>
+
+        <!-- Dynamic Multi-Object / Single-Object Result Container -->
+        <div class="multi-objects-container" id="multiObjectsContainer">
+          <div id="resultPlaceholder" style="color:var(--muted); text-align:center; padding:40px 16px;">
+            <span style="font-size:2.5rem; display:block; margin-bottom:10px;">🥗</span>
+            <h3 style="font-size:1.1rem; color:var(--text); margin-bottom:4px;">No Scan Yet</h3>
+            <p style="font-size:0.875rem; max-width:320px; margin:0 auto;">
+              Capture or upload a food image and click <strong>Analyze Food</strong> to view detected items and freshness assessments.
+            </p>
           </div>
         </div>
 
-        <p class="note" id="resultMessage">
-          Upload an image and click Analyze Image.
-        </p>
-
-        <!-- Feedback Section -->
-        <div class="feedback-section" id="feedbackSection" style="display: none;">
-          <p>Is this prediction correct?</p>
-          <div class="feedback-actions">
-            <button class="feedback-btn yes-btn" id="feedbackYes" type="button">👍 Yes</button>
-            <button class="feedback-btn no-btn" id="feedbackNo" type="button">👎 No</button>
-          </div>
+        <!-- After-Scan Action Bar (visible when results appear) -->
+        <div class="after-scan-actions" id="afterScanActions" style="display: none;">
+          <button class="btn primary touch-friendly" id="scanAnotherBtn" type="button" style="flex:1 1 140px; padding:10px 16px; font-size:0.875rem;">
+            📷 Scan Another
+          </button>
+          <a href="{{ url_for('chatbot_page') }}" class="btn secondary touch-friendly" id="askAiGeneralBtn" style="flex:1 1 160px; padding:10px 16px; font-size:0.875rem;">
+            🤖 Ask AI Assistant
+          </a>
+          <a href="{{ url_for('history') }}" class="btn secondary touch-friendly" style="padding:10px 14px; font-size:0.875rem;" title="View Past Scans">
+            🕘 History
+          </a>
         </div>
 
-        <!-- Correction Section -->
-        <div class="correction-section" id="correctionSection" style="display: none;">
-          <p>Help us improve! What is the correct label?</p>
-          <div class="correction-row">
-            <select id="correctionLabelSelect">
-              <option value="" disabled selected>Select Item</option>
-              <optgroup label="Fruits">
-                <option value="apples">Apple</option>
+        <!-- Supervised Feedback Accordion -->
+        <div class="feedback-section" id="feedbackSection" style="display: none; margin-top:20px; padding:16px; background:var(--bg-alt); border-radius:var(--radius-md);">
+          <p style="font-size:0.875rem; font-weight:600; margin-bottom:8px;">Was this prediction accurate?</p>
+          <div style="display:flex; gap:10px;" id="feedbackButtonRow">
+            <button class="btn secondary touch-friendly" id="feedbackYes" type="button" style="padding:6px 14px; font-size:0.825rem;">👍 Yes, Accurate</button>
+            <button class="btn secondary touch-friendly" id="feedbackNo" type="button" style="padding:6px 14px; font-size:0.825rem;">👎 Report Issue</button>
+          </div>
+
+          <div id="correctionForm" style="display: none; margin-top:14px;">
+            <p style="font-size:0.825rem; color:var(--text-secondary); margin-bottom:8px;">Select the true label to add to our quality review queue:</p>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px;">
+              <select id="correctItemSelect" style="padding:8px 12px; border-radius:var(--radius-sm); border:1px solid var(--border); background:var(--card); color:var(--text);">
+                <option value="" disabled selected>Select Produce Item</option>
+                <option value="apple">Apple</option>
                 <option value="banana">Banana</option>
-                <option value="oranges">Orange</option>
-                <option value="mango">Mango</option>
-              </optgroup>
-              <optgroup label="Vegetables">
+                <option value="orange">Orange</option>
                 <option value="tomato">Tomato</option>
                 <option value="potato">Potato</option>
                 <option value="cucumber">Cucumber</option>
-                <option value="bittergroud">Bitter Gourd</option>
+                <option value="bitter_gourd">Bitter Gourd</option>
                 <option value="onion">Onion</option>
                 <option value="carrot">Carrot</option>
-              </optgroup>
-              <optgroup label="Food">
-                <option value="pizza">Pizza</option>
-                <option value="burger">Burger</option>
-                <option value="sandwich">Sandwich</option>
-                <option value="pasta">Pasta</option>
-                <option value="rice">Rice</option>
-                <option value="bread">Bread</option>
-              </optgroup>
-            </select>
-            <select id="correctionConditionSelect">
-              <option value="" disabled selected>Select Condition</option>
-              <option value="fresh">Fresh</option>
-              <option value="spoiled">Spoiled</option>
-            </select>
+              </select>
+              <select id="correctConditionSelect" style="padding:8px 12px; border-radius:var(--radius-sm); border:1px solid var(--border); background:var(--card); color:var(--text);">
+                <option value="" disabled selected>Select Freshness</option>
+                <option value="Fresh">Fresh</option>
+                <option value="Spoiled">Spoiled</option>
+              </select>
+            </div>
+            <button class="btn primary touch-friendly" id="submitFeedbackBtn" type="button" style="padding:8px 18px; font-size:0.85rem;">Submit Feedback</button>
           </div>
-          <button class="submit-correction-btn" id="submitCorrection" type="button">Submit & Retrain</button>
-        </div>
-
-        <!-- Training Status -->
-        <div class="training-status" id="trainingStatus" style="display: none;">
-          <span class="spinner">⏳</span>
-          <span id="trainingStatusText">Retraining model...</span>
+          <div id="feedbackResultMsg" style="display:none; font-size:0.85rem; margin-top:10px;"></div>
         </div>
       </div>
     </section>
 
-    <!-- Features -->
-
-    <section class="info-section">
-      <div class="info-card">
-        <h3>🍎 Fruit Detection</h3>
-        <p>Apple, Banana, Orange detection with freshness prediction.</p>
-      </div>
-
-      <div class="info-card">
-        <h3>🥦 Vegetable Detection</h3>
-        <p>Tomato, Potato, Cucumber and Bitter Gourd detection.</p>
-      </div>
-
-      <div class="info-card">
-        <h3>🤖 Deep Learning Model</h3>
-        <p>
-          MobileNetV2 based CNN model trained on fresh and spoiled datasets.
+    <!-- Section 3: How FreshLens AI Works (3 Steps) -->
+    <section class="product-steps-section reveal-on-scroll">
+      <div style="text-align:center; max-width:680px; margin:0 auto;">
+        <span class="badge">Simple 3-Step Process</span>
+        <h2>How FreshLens AI Works</h2>
+        <p style="color:var(--text-secondary); font-size:0.95rem; margin-top:6px;">
+          See your food. Understand its condition. Make a better decision.
         </p>
       </div>
+
+      <div class="steps-grid">
+        <div class="step-card">
+          <span class="step-num">01</span>
+          <h3>Capture</h3>
+          <p style="color:var(--text-secondary); font-size:0.9rem; margin-top:6px;">
+            Capture or upload a clear photo of produce or food directly from your mobile camera or gallery.
+          </p>
+        </div>
+
+        <div class="step-card">
+          <span class="step-num">02</span>
+          <h3>Analyze</h3>
+          <p style="color:var(--text-secondary); font-size:0.9rem; margin-top:6px;">
+            FreshLens AI evaluates visual details to identify the food item and examine freshness.
+          </p>
+        </div>
+
+        <div class="step-card">
+          <span class="step-num">03</span>
+          <h3>Understand</h3>
+          <p style="color:var(--text-secondary); font-size:0.9rem; margin-top:6px;">
+            Get the detected food, freshness condition where supported, storage guidelines, and practical recommendations.
+          </p>
+        </div>
+      </div>
     </section>
 
-    {% include 'components/footer.html' %}
+    <!-- Section 4: Trust & Safety Section -->
+    <section class="trust-safety-section reveal-on-scroll">
+      <div class="trust-safety-card">
+        <div class="trust-icon">🛡️</div>
+        <div>
+          <h3 style="font-size:1.15rem; margin-bottom:6px;">AI helps you understand your food — it does not replace your judgment.</h3>
+          <p style="color:var(--text-secondary); font-size:0.88rem; line-height:1.65; margin:0;">
+            Image clarity, lighting, and camera angle directly affect visual detection. Freshness analysis is currently available for supported produce items. Visual AI predictions are estimates; always visually and physically inspect food before consumption, and follow standard food safety guidance when spoilage signs appear.
+          </p>
+        </div>
+      </div>
+    </section>
+  </main>
 
-    <script src="{{ url_for('static',
-filename='js/scan.js') }}"></script>
-  </body>
+  {% include 'components/footer.html' %}
+
+  <!-- Mobile Bottom Navigation Bar -->
+  {% include 'components/bottom_nav.html' %}
+
+  <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/scan.js') }}"></script>
+</body>
 </html>

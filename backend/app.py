@@ -1,83 +1,75 @@
 import os
 import sys
-import shutil
+import threading
 from datetime import datetime
 from flask import Flask, request, jsonify, render_template, redirect, url_for
-from werkzeug.utils import secure_filename
 
-# Ensure the backend directory is in the Python search path for importing src
-backend_dir = os.path.dirname(os.path.abspath(__file__))
-if backend_dir not in sys.path:
-    sys.path.append(backend_dir)
-
-from src.predict import predict_image, load_model_once
-from src.chatbot import get_chatbot_response
-
+# Ensure backend directory is in sys.path
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+if BASE_DIR not in sys.path:
+    sys.path.insert(0, BASE_DIR)
 
-TEMPLATE_FOLDER = os.path.join(BASE_DIR, "../frontend/templates")
-STATIC_FOLDER = os.path.join(BASE_DIR, "../frontend/static")
+from config import (
+    SECRET_KEY,
+    DEBUG,
+    PORT,
+    HOST,
+    MAX_CONTENT_LENGTH,
+    UPLOAD_FOLDER,
+    TEMPLATE_FOLDER,
+    STATIC_FOLDER,
+    ENV
+)
+from api import api_bp
+from ml.loader import get_freshness_model, get_classes_metadata, get_legacy_class_indices
+from services.history_service import history_service
+from services.prediction_service import prediction_service
+from services.feedback_service import feedback_service
+from services.chatbot_service import get_chatbot_response
+from utils.logger import logger
 
+# Initialize Flask Application
 app = Flask(__name__, template_folder=TEMPLATE_FOLDER, static_folder=STATIC_FOLDER)
-app.secret_key = "safebite_secret_key"
+app.secret_key = SECRET_KEY
+app.config["MAX_CONTENT_LENGTH"] = MAX_CONTENT_LENGTH
+app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
+app.config["TEMPLATES_AUTO_RELOAD"] = True
 
-UPLOAD_FOLDER = os.path.join(STATIC_FOLDER, "uploads")
+# Ensure upload directory exists
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
+# Register Versioned API Blueprint
+app.register_blueprint(api_bp)
 
-import threading
-
-
-def preload_model_async():
+# Background Model Preloading
+def preload_models_async():
     try:
-        print("Preloading SafeBite AI model in background thread...")
-        load_model_once()
-        print("SafeBite AI model preloading and warm-up completed successfully!")
+        logger.info("Initializing FreshLens AI models and metadata in background...")
+        get_classes_metadata()
+        get_legacy_class_indices()
+        get_freshness_model()
+        logger.info("FreshLens AI model warmup and preloading completed successfully!")
     except Exception as e:
-        print(f"Failed to preload model in background: {e}")
+        logger.error(f"Background model preloading warning: {e}")
+
+threading.Thread(target=preload_models_async, daemon=True).start()
 
 
-# Start background thread for preloading the model to make the first prediction instant
-threading.Thread(target=preload_model_async, daemon=True).start()
-
-ALLOWED_EXTENSIONS = {"jpg", "jpeg", "png", "webp"}
-
-
-def allowed_file(filename):
-    return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
-
-
-import json
-HISTORY_FILE = os.path.join(BASE_DIR, "history.json")
+# Context Processors
+@app.context_processor
+def inject_global_template_vars():
+    return {
+        "has_history": history_service.count() > 0,
+        "current_year": datetime.now().year,
+        "env": ENV
+    }
 
 
-def load_history():
-    if not os.path.exists(HISTORY_FILE):
-        return []
-    try:
-        with open(HISTORY_FILE, "r") as f:
-            return json.load(f)
-    except Exception as e:
-        print(f"Error loading history: {e}")
-        return []
-
-
-def save_to_history(scan_record):
-    history = load_history()
-    history.insert(0, scan_record)
-    history = history[:50]
-    try:
-        with open(HISTORY_FILE, "w") as f:
-            json.dump(history, f, indent=4)
-    except Exception as e:
-        print(f"Error saving history: {e}")
-
-
-
+# HTML Page Routes
 @app.route("/")
 def home():
-    return render_template("index.html")
+    recent_scans = history_service.get_all(limit=5)
+    return render_template("index.html", recent_scans=recent_scans)
 
 
 @app.route("/scan")
@@ -85,14 +77,14 @@ def scan():
     return render_template("scan.html")
 
 
-@app.route("/about")
-def about():
-    return render_template("about.html")
-
-
 @app.route("/features")
 def features():
     return render_template("features.html")
+
+
+@app.route("/about")
+def about():
+    return render_template("about.html")
 
 
 @app.route("/contact")
@@ -100,225 +92,138 @@ def contact():
     return render_template("contact.html")
 
 
-@app.context_processor
-def inject_history_status():
-    history_data = load_history()
-    return {"has_history": len(history_data) > 0}
-
-
-@app.route("/history")
-def history():
-    history_data = load_history()
-    if not history_data:
-        return redirect(url_for("home"))
-    return render_template("history.html", history=history_data)
-
-
-@app.route("/clear-history", methods=["POST"])
-def clear_history():
-    try:
-        if os.path.exists(HISTORY_FILE):
-            os.remove(HISTORY_FILE)
-        return jsonify({"success": True, "message": "History cleared successfully"})
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-
-
-@app.route("/predict", methods=["POST"])
-def predict():
-    if "file" not in request.files:
-        return jsonify({"error": "No file uploaded"}), 400
-
-    file = request.files["file"]
-
-    if file.filename == "":
-        return jsonify({"error": "No selected file"}), 400
-
-    if not allowed_file(file.filename):
-        return jsonify({"error": "Only JPG, JPEG, PNG, WEBP allowed"}), 400
-
-    filename = secure_filename(file.filename)
-    filename = datetime.now().strftime("%Y%m%d%H%M%S_") + filename
-
-    image_path = os.path.join(app.config["UPLOAD_FOLDER"], filename)
-    file.save(image_path)
-
-    try:
-        result = predict_image(image_path)
-
-        message = (
-            "Fresh food detected ✅ Safe and healthy."
-            if result["condition"] == "Fresh"
-            else "Spoiled food detected ⚠️ Avoid consuming this food."
-        )
-
-        # Parse selected category
-        selected_cat_raw = request.form.get("selected_category", "fruit").lower().strip()
-        if selected_cat_raw == "fruit":
-            selected_category = "Fruit"
-        elif selected_cat_raw == "vegetable":
-            selected_category = "Vegetable"
-        elif selected_cat_raw == "food":
-            selected_category = "Food"
-        else:
-            selected_category = selected_cat_raw.capitalize()
-
-        # Auto-detect category from predicted item name
-        item_lower = result["item"].lower().strip()
-        fruits = ["apple", "apples", "banana", "bananas", "orange", "oranges", "mango", "mangoes", "grapes", "grape", "strawberry", "blueberry", "pineapple", "watermelon", "pear", "peach", "plum", "cherry", "coconut", "avocado"]
-        vegetables = ["tomato", "tomatoes", "potato", "potatoes", "cucumber", "cucumbers", "bitter gourd", "bittergourd", "bittergroud", "onion", "onions", "carrot", "carrots", "broccoli", "spinach", "cabbage", "lettuce", "garlic", "ginger", "lemon", "lime", "mushroom", "radish", "turnip", "pumpkin", "squash", "corn", "peas", "beans"]
-        foods = ["pizza", "burger", "sandwich", "pasta", "rice", "bread", "cheese", "egg", "meat", "chicken", "fish", "salad", "soup", "curry", "sushi"]
-
-        if any(f in item_lower for f in fruits):
-            detected_category = "Fruit"
-        elif any(v in item_lower for v in vegetables):
-            detected_category = "Vegetable"
-        elif any(fo in item_lower for fo in foods):
-            detected_category = "Food"
-        else:
-            detected_category = "Unknown"
-
-        # Check for category mismatch
-        warning = ""
-        if detected_category != "Unknown" and selected_category != detected_category:
-            warning = f"The uploaded image belongs to the {detected_category} category, but you selected {selected_category} Scan."
-
-        stability_warning = result.get("stability_warning", "")
-
-        scan_record = {
-            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            "food_name": result["item"],
-            "condition": result["condition"],
-            "confidence": result["confidence"],
-            "selected_category": selected_category,
-            "detected_category": detected_category,
-            "image_url": f"/static/uploads/{filename}",
-            "warning": warning,
-            "stability_warning": stability_warning
-        }
-        save_to_history(scan_record)
-
-        return jsonify({
-            "food_name": result["item"],
-            "condition": result["condition"],
-            "confidence": result["confidence"],
-            "label": result["label"],
-            "message": message,
-            "image_url": f"/static/uploads/{filename}",
-            "selected_category": selected_category,
-            "detected_category": detected_category,
-            "warning": warning,
-            "stability_warning": stability_warning,
-            "top_predictions": result.get("top_predictions", [])
-        })
-
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-
-@app.errorhandler(404)
-def not_found(error):
-    return render_template("index.html"), 404
-
-
-@app.route("/feedback", methods=["POST"])
-def feedback():
-    data = request.json or {}
-    image_url = data.get("image_url")
-    label = data.get("label")
-
-    if not image_url or not label:
-        return jsonify({"error": "Missing image_url or label"}), 400
-
-    filename = os.path.basename(image_url)
-    uploaded_image_path = os.path.join(app.config["UPLOAD_FOLDER"], filename)
-
-    if not os.path.exists(uploaded_image_path):
-        return jsonify({"error": "Uploaded image not found"}), 404
-
-    dest_dir = os.path.join(BASE_DIR, "dataset/Train", label)
-    os.makedirs(dest_dir, exist_ok=True)
-    dest_image_path = os.path.join(dest_dir, filename)
-    
-    try:
-        shutil.copy(uploaded_image_path, dest_image_path)
-    except Exception as e:
-        return jsonify({"error": f"Failed to copy image: {str(e)}"}), 500
-
-    import src.predict as predict_module
-    import tensorflow as tf
-    import numpy as np
-
-    is_core_class = label in predict_module.class_indices
-    trained_real = False
-
-    if is_core_class:
-        try:
-            processed_image = predict_module.preprocess_image(uploaded_image_path)
-            
-            target_idx = predict_module.class_indices[label]
-            y = np.zeros((1, len(predict_module.class_indices)))
-            y[0, target_idx] = 1.0
-
-            # Load the Keras model dynamically from disk for retraining
-            keras_model = tf.keras.models.load_model(predict_module.MODEL_PATH, compile=False)
-
-            keras_model.compile(
-                optimizer=tf.keras.optimizers.Adam(learning_rate=1e-5),
-                loss="categorical_crossentropy",
-                metrics=["accuracy"]
-            )
-            
-            keras_model.fit(processed_image, y, epochs=5, verbose=0)
-            keras_model.save(predict_module.MODEL_PATH)
-
-            # Re-convert to TFLite model dynamically after retraining
-            try:
-                print("Re-converting model to TFLite after retraining...")
-                converter = tf.lite.TFLiteConverter.from_keras_model(keras_model)
-                converter.optimizations = [tf.lite.Optimize.DEFAULT]
-                tflite_model = converter.convert()
-                with open(predict_module.TFLITE_PATH, "wb") as f:
-                    f.write(tflite_model)
-                print("TFLite model updated successfully after retraining!")
-            except Exception as convert_err:
-                print(f"Failed to update TFLite model: {convert_err}")
-
-            # Reload prediction interpreter to pick up new weights
-            predict_module.load_model()
-            trained_real = True
-        except Exception as e:
-            print(f"Online retraining failed: {e}")
-
-    return jsonify({
-        "success": True,
-        "label_saved": label,
-        "is_core_class": is_core_class,
-        "trained_real": trained_real,
-        "message": f"Feedback submitted successfully! Image saved and model retrained on {label}."
-    })
-
-
 @app.route("/chatbot")
 def chatbot_page():
     return render_template("chatbot.html")
 
 
-@app.route("/chat", methods=["POST"])
-def chat():
-    data = request.json or {}
-    message = data.get("message", "").strip()
+@app.route("/history")
+def history():
+    records = history_service.get_all(limit=100)
+    return render_template("history.html", history=records)
 
+
+# Root Health Route
+@app.route("/health")
+def health():
+    return jsonify({
+        "success": True,
+        "status": "healthy",
+        "service": "FreshLens AI",
+        "version": "2.0.0",
+        "environment": ENV,
+        "timestamp": datetime.now().isoformat()
+    }), 200
+
+
+# Legacy Compatibility Routes (for existing frontend and clients)
+@app.route("/predict", methods=["POST"])
+def legacy_predict():
+    if "file" not in request.files:
+        return jsonify({
+            "success": False,
+            "error": "No file uploaded. Please select an image."
+        }), 400
+
+    file = request.files["file"]
+    selected_category = request.form.get("selected_category", "All").strip()
+    result = prediction_service.process_image_upload(file, selected_category=selected_category)
+    status_code = 200 if result.get("success") else 422
+    return jsonify(result), status_code
+
+
+@app.route("/feedback", methods=["POST"])
+def legacy_feedback():
+    data = request.get_json(silent=True) or request.form.to_dict()
+    if not data:
+        return jsonify({"error": "Request body must be JSON or form data."}), 400
+
+    image_url = data.get("image_url", "").strip()
+    label = data.get("label", "").strip()
+    predicted_class = data.get("predicted_class", label).strip()
+    correct_class = data.get("correct_class", label).strip()
+    notes = data.get("notes", "").strip()
+
+    if not image_url or not correct_class:
+        return jsonify({"error": "Missing image_url or label"}), 400
+
+    res = feedback_service.submit_feedback(
+        image_url=image_url,
+        predicted_class=predicted_class,
+        correct_class=correct_class,
+        user_notes=notes
+    )
+    return jsonify({
+        "success": True,
+        "label_saved": correct_class,
+        "is_core_class": True,
+        "trained_real": False,
+        "message": res["message"]
+    }), 200
+
+
+@app.route("/clear-history", methods=["POST"])
+def legacy_clear_history():
+    success = history_service.clear()
+    if success:
+        return jsonify({"success": True, "message": "History cleared successfully"})
+    return jsonify({"error": "Failed to clear history"}), 500
+
+
+@app.route("/chat", methods=["POST"])
+def legacy_chat():
+    data = request.get_json(silent=True) or {}
+    message = data.get("message", "").strip()
     if not message:
         return jsonify({"error": "Message is required"}), 400
 
     try:
-        response = get_chatbot_response(message)
-        return jsonify({"response": response})
+        reply = get_chatbot_response(message)
+        return jsonify({"response": reply})
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.error(f"Error in legacy chat endpoint: {e}")
+        return jsonify({"error": "Unable to process chat request."}), 500
+
+
+# Error Handlers
+@app.errorhandler(413)
+def request_entity_too_large(error):
+    return jsonify({
+        "success": False,
+        "error": {
+            "code": "FILE_TOO_LARGE",
+            "message": "The uploaded image exceeds the 16MB file size limit."
+        }
+    }), 413
+
+
+@app.errorhandler(404)
+def not_found(error):
+    if request.path.startswith("/api/"):
+        return jsonify({
+            "success": False,
+            "error": {
+                "code": "NOT_FOUND",
+                "message": f"Endpoint '{request.path}' not found."
+            }
+        }), 404
+    return render_template("index.html"), 404
+
+
+@app.errorhandler(500)
+def server_error(error):
+    logger.error(f"Internal server error: {error}")
+    if request.path.startswith("/api/"):
+        return jsonify({
+            "success": False,
+            "error": {
+                "code": "INTERNAL_SERVER_ERROR",
+                "message": "An internal error occurred. Please try again shortly."
+            }
+        }), 500
+    return render_template("index.html"), 500
 
 
 if __name__ == "__main__":
-    app.run(debug=True, host="0.0.0.0", port=5000)
+    logger.info(f"Starting FreshLens AI server on http://{HOST}:{PORT} (debug={DEBUG})")
+    app.run(debug=DEBUG, host=HOST, port=PORT)

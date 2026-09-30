@@ -1,371 +1,292 @@
+"""
+FreshLens AI - Core Prediction Module (backend/src/predict.py)
+Implements complete 5-stage inference architecture:
+  1. Image Quality Check (darkness, brightness, blur, resolution)
+  2. Multi-object Detection & COCO Non-Food Rejection
+  3. Binary Food vs Non-Food Validation Gate (MobileNetV2 Validator)
+  4. Food Classification & Confidence Validation (>= 0.60)
+  5. Freshness Analysis (ONLY after food_detected == True)
+"""
 import os
-import json
-import threading
-import numpy as np
 import cv2
+import numpy as np
+from typing import Dict, Any, List, Tuple, Optional
 
-# Check if we should use TFLite to conserve memory on Render/Linux
-# Windows development environment will default to full tensorflow to support retraining
-USE_TFLITE = (os.name != 'nt') or (os.environ.get('RENDER') is not None)
+try:
+    from ml.quality import validate_image_for_inference
+    from ml.detector import detect_objects_in_image
+    from ml.validator import validate_food_presence
+    from ml.freshness import evaluate_freshness_for_item, run_freshness_inference
+    from ml.loader import (
+        get_freshness_model,
+        get_legacy_class_indices,
+        get_legacy_class_names,
+        get_classes_metadata
+    )
+    from utils.image_utils import preprocess_for_freshness, crop_bounding_box
+    from utils.logger import logger
+    from config import (
+        KERAS_MODEL_PATH,
+        TFLITE_MODEL_PATH,
+        CLASSES_CONFIG_PATH,
+        FOOD_CONFIDENCE_THRESHOLD,
+        FOOD_VALIDATION_THRESHOLD,
+        IMG_SIZE
+    )
+except ImportError:
+    from backend.ml.quality import validate_image_for_inference
+    from backend.ml.detector import detect_objects_in_image
+    from backend.ml.validator import validate_food_presence
+    from backend.ml.freshness import evaluate_freshness_for_item, run_freshness_inference
+    from backend.ml.loader import (
+        get_freshness_model,
+        get_legacy_class_indices,
+        get_legacy_class_names,
+        get_classes_metadata
+    )
+    from backend.utils.image_utils import preprocess_for_freshness, crop_bounding_box
+    from backend.utils.logger import logger
+    from backend.config import (
+        KERAS_MODEL_PATH,
+        TFLITE_MODEL_PATH,
+        CLASSES_CONFIG_PATH,
+        FOOD_CONFIDENCE_THRESHOLD,
+        FOOD_VALIDATION_THRESHOLD,
+        IMG_SIZE
+    )
 
-# Global variables for model state
-model = None
-interpreter = None
-class_indices = {}
-class_names = {}
-_model_lock = threading.Lock()
+MODEL_PATH = KERAS_MODEL_PATH
+TFLITE_PATH = TFLITE_MODEL_PATH
+CLASS_PATH = CLASSES_CONFIG_PATH
 
-IMG_SIZE = 224
-MAX_DISPLAY_CONFIDENCE = 97.50
-
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-
-MODEL_PATH = os.path.abspath(
-    os.path.join(BASE_DIR, "..", "models", "safebite_mobilenetv2_model.h5")
-)
-
-TFLITE_PATH = os.path.abspath(
-    os.path.join(BASE_DIR, "..", "models", "safebite_mobilenetv2_model.tflite")
-)
-
-CLASS_PATH = os.path.abspath(
-    os.path.join(BASE_DIR, "..", "models", "class_indices.json")
-)
+class_indices = get_legacy_class_indices()
+class_names = get_legacy_class_names()
 
 
 def load_model_once():
-    """Lazily loads the model (Keras or TFLite) exactly once in a thread-safe manner."""
-    global model, interpreter, class_indices, class_names
-
-    with _model_lock:
-        if USE_TFLITE:
-            if interpreter is not None:
-                return interpreter
-        else:
-            if model is not None:
-                return model
-
-        # Load class indices
-        if not os.path.exists(CLASS_PATH):
-            raise FileNotFoundError(f"Class indices file not found: {CLASS_PATH}")
-
-        with open(CLASS_PATH, "r") as f:
-            class_indices = json.load(f)
-
-        class_names = {v: k for k, v in class_indices.items()}
-
-        if USE_TFLITE:
-            print("Loading SafeBite AI TFLite model...")
-            if not os.path.exists(TFLITE_PATH):
-                raise FileNotFoundError(f"TFLite model file not found: {TFLITE_PATH}")
-            try:
-                import tensorflow as tf
-                interpreter = tf.lite.Interpreter(model_path=TFLITE_PATH)
-                print("Using TensorFlow's built-in Lite Interpreter (TF version compatibility).")
-            except ImportError:
-                import tflite_runtime.interpreter as tflite
-                interpreter = tflite.Interpreter(model_path=TFLITE_PATH)
-                print("Using tflite_runtime Interpreter.")
-            interpreter.allocate_tensors()
-            print("TFLite model loaded successfully!")
-            return interpreter
-        else:
-            print("Loading SafeBite AI Keras model...")
-            if not os.path.exists(MODEL_PATH):
-                raise FileNotFoundError(f"Model file not found: {MODEL_PATH}")
-            import tensorflow as tf
-            model = tf.keras.models.load_model(MODEL_PATH, compile=False)
-            print("Model loaded successfully!")
-
-            print("Warming up SafeBite model...")
-            dummy = np.zeros((1, IMG_SIZE, IMG_SIZE, 3), dtype=np.float32)
-            model.predict(dummy, verbose=0)
-            print("Model warmup completed!")
-            return model
+    """Returns singleton model instance."""
+    return get_freshness_model()
 
 
 def load_model():
-    """Forces reloading of the model (useful after online retraining)."""
-    global model, interpreter
-    with _model_lock:
-        model = None
-        interpreter = None
+    """Legacy alias for load_model_once."""
     return load_model_once()
 
 
-def format_label(label):
-    clean_label = label.lower().strip()
+def preprocess_image(image_path: str) -> np.ndarray:
+    """Preprocesses image from path for model input."""
+    if not os.path.exists(image_path):
+        raise ValueError(f"Image path not found: {image_path}")
 
-    if clean_label.startswith("fresh"):
+    image = cv2.imread(image_path)
+    if image is None:
+        raise ValueError("Image could not be read.")
+
+    return preprocess_for_freshness(image)
+
+
+def format_label(label: str) -> Tuple[str, str]:
+    """Extracts item name and condition from label string."""
+    clean = label.lower().strip()
+    if clean.startswith("fresh"):
         condition = "Fresh"
-        item = clean_label[5:]
-    elif clean_label.startswith("spoiled"):
+        item = clean[5:]
+    elif clean.startswith("spoiled"):
         condition = "Spoiled"
-        item = clean_label[7:]
-    elif clean_label.startswith("spoile"):
+        item = clean[7:]
+    elif clean.startswith("spoile"):
         condition = "Spoiled"
-        item = clean_label[6:]
+        item = clean[6:]
     else:
         condition = "Unknown"
-        item = clean_label
+        item = clean
 
-    item = item.replace("_", " ")
-    item = item.replace("-", " ")
-    item = item.replace("bittergroud", "bitter gourd")
-    item = item.replace("bittergourd", "bitter gourd")
-    item = item.strip().title()
-
+    item = item.replace("_", " ").replace("bittergroud", "bitter gourd").strip().title()
     if item == "Apples":
         item = "Apple"
-    if item == "Oranges":
+    elif item == "Oranges":
         item = "Orange"
-
     return item, condition
 
 
-def preprocess_image(image_path):
-    if not os.path.exists(image_path):
-        raise ValueError("Image path not found.")
-
-    image = cv2.imread(image_path)
-
-    if image is None:
-        raise ValueError("Image not readable.")
-
-    image = cv2.resize(image, (IMG_SIZE, IMG_SIZE), interpolation=cv2.INTER_AREA)
-    image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-    image = image.astype("float32") / 255.0
-    image = np.expand_dims(image, axis=0)
-
-    return image
-
-
-def get_top_predictions(prediction, top_n=3):
-    prediction = prediction[0]
-    top_indices = prediction.argsort()[-top_n:][::-1]
-
+def get_top_predictions(probs: np.ndarray, top_n: int = 3) -> List[Dict[str, Any]]:
+    """Calculates top-N predictions with honest softmax probabilities."""
+    top_indices = probs.argsort()[-top_n:][::-1]
     results = []
 
-    for index in top_indices:
-        label = class_names[int(index)]
-        item, condition = format_label(label)
-
-        raw_confidence = float(prediction[index] * 100)
-        display_confidence = min(raw_confidence, MAX_DISPLAY_CONFIDENCE)
+    for idx in top_indices:
+        lbl = class_names[int(idx)]
+        item, condition = format_label(lbl)
+        actual_prob = float(probs[idx])
+        pct = round(actual_prob * 100, 2)
 
         results.append({
-            "label": label,
+            "label": lbl,
             "item": item,
             "condition": condition,
-            "confidence": round(display_confidence, 2),
-            "raw_confidence": round(raw_confidence, 2)
+            "confidence": pct,
+            "raw_confidence": pct
         })
 
     return results
 
 
-def check_prediction_stability(top_predictions):
+def check_prediction_stability(top_predictions: List[Dict[str, Any]]) -> str:
+    """Evaluates stability without fake heuristics."""
     if not top_predictions:
         return ""
 
     best = top_predictions[0]
+    if best["confidence"] < 40.0:
+        return "Low confidence prediction. Try capturing a closer, clearer image of the food."
 
-    if best["confidence"] < 55:
-        return "Low confidence prediction. Please try a clearer image."
-
-    for other in top_predictions[1:]:
-        if (
-            other["item"].lower() == best["item"].lower()
-            and other["condition"] != best["condition"]
-        ):
-            margin = abs(best["raw_confidence"] - other["raw_confidence"])
-            if margin < 15:
-                return "Borderline freshness result. Try better lighting or a clearer image."
+    if len(top_predictions) > 1:
+        second = top_predictions[1]
+        if best["item"].lower() == second["item"].lower() and best["condition"] != second["condition"]:
+            diff = abs(best["confidence"] - second["confidence"])
+            if diff < 15.0:
+                return "Borderline freshness result. Consider verifying with better lighting."
 
     return ""
 
 
-dataset_cache = {}
-dataset_cache_initialized = False
-_cache_lock = threading.Lock()
+def predict_image(image_path: str) -> Dict[str, Any]:
+    """
+    Executes production-quality 5-stage inference pipeline on image path.
+    NO filename shortcuts, NO artificial confidence inflation.
+    Guarantees freshness analysis ONLY executes when food is confidently validated.
+    """
+    if not os.path.exists(image_path):
+        raise ValueError("Image path not found.")
 
-
-def initialize_dataset_cache():
-    global dataset_cache, dataset_cache_initialized, class_indices, class_names
-    with _cache_lock:
-        if not class_indices:
-            if os.path.exists(CLASS_PATH):
-                try:
-                    with open(CLASS_PATH, "r") as f:
-                        class_indices = json.load(f)
-                    class_names = {v: k for k, v in class_indices.items()}
-                except Exception as e:
-                    print(f"Failed to load class indices in cache initialization: {e}")
-
-        if dataset_cache_initialized:
-            return
-        
-        train_dir = os.path.abspath(os.path.join(BASE_DIR, "..", "dataset", "Train"))
-        test_dir = os.path.abspath(os.path.join(BASE_DIR, "..", "dataset", "Test"))
-        
-        for d in [train_dir, test_dir]:
-            if os.path.exists(d):
-                for class_folder in os.listdir(d):
-                    class_path = os.path.join(d, class_folder)
-                    if os.path.isdir(class_path):
-                        for f in os.listdir(class_path):
-                            if f.lower().endswith(('.png', '.jpg', '.jpeg', '.webp')):
-                                dataset_cache[f.lower()] = class_folder
-        dataset_cache_initialized = True
-        print(f"Dataset cache initialized with {len(dataset_cache)} files.")
-
-
-def find_dataset_match(image_path):
-    initialize_dataset_cache()
-    basename = os.path.basename(image_path).lower().strip()
-    
-    # Try direct match
-    if basename in dataset_cache:
-        return dataset_cache[basename]
-        
-    # Try stripping timestamp prefix (e.g. "20260618212554_a_f016.png")
-    parts = basename.split("_", 1)
-    if len(parts) == 2 and parts[0].isdigit() and len(parts[0]) == 14:
-        sub_name = parts[1]
-        if sub_name in dataset_cache:
-            return dataset_cache[sub_name]
-            
-    # Try suffix/substring match
-    for cached_name, class_folder in dataset_cache.items():
-        if cached_name in basename or basename in cached_name:
-            return class_folder
-            
-    return None
-
-
-def predict_image(image_path):
-    filename = os.path.basename(image_path).lower()
-
-    # Try matching file with dataset first
-    matched_class = find_dataset_match(image_path)
-    if matched_class:
-        item, condition = format_label(matched_class)
-        confidence = 98.0
-        label = matched_class
-        
-        dummy_top = [
-            {
-                "label": label,
-                "item": item,
-                "condition": condition,
-                "confidence": confidence,
-                "raw_confidence": confidence
-            }
-        ]
-        other_cond = "Spoiled" if condition == "Fresh" else "Fresh"
-        other_prefix = "spoile" if other_cond == "Spoiled" else "fresh"
-        other_item_raw = item.lower().replace(' ', '')
-        other_label = f"{other_prefix}{other_item_raw}"
-        if other_label not in class_indices:
-            if f"{other_label}s" in class_indices:
-                other_label = f"{other_label}s"
-        
-        dummy_top.append({
-            "label": other_label,
-            "item": item,
-            "condition": other_cond,
-            "confidence": round(100.0 - confidence, 2),
-            "raw_confidence": round(100.0 - confidence, 2)
-        })
-        
-        print(f"Matched {filename} in dataset: class={label}, item={item}, condition={condition}")
-        
+    # ---------------------------------------------------------
+    # STAGE 1: Image Quality Validation
+    # ---------------------------------------------------------
+    is_quality_ok, quality_code, quality_msg, image_bgr, metrics = validate_image_for_inference(image_path)
+    if not is_quality_ok:
         return {
-            "label": label,
-            "item": item,
-            "condition": condition,
-            "confidence": confidence,
-            "raw_confidence": confidence,
-            "top_predictions": dummy_top,
-            "stability_warning": ""
+            "status": "poor_image_quality",
+            "food_detected": False,
+            "message": quality_msg or "Image quality is insufficient. Please provide a clear and well-lit image.",
+            "error": {
+                "code": quality_code or "POOR_IMAGE_QUALITY",
+                "message": quality_msg or "Image quality is insufficient."
+            },
+            "quality_metrics": metrics
         }
 
-    # Define non-core keywords that require overrides
-    non_core_items = {
-        "mango": "Mango",
-        "pizza": "Pizza",
-        "burger": "Burger",
-        "sandwich": "Sandwich",
-        "pasta": "Pasta",
-        "rice": "Rice",
-        "bread": "Bread",
-        "onion": "Onion",
-        "carrot": "Carrot"
+    # ---------------------------------------------------------
+    # STAGE 2: Multi-object Detection & Early Non-Food Rejection
+    # ---------------------------------------------------------
+    raw_detections, is_rejected_non_food, non_food_reason = detect_objects_in_image(image_bgr)
+    if is_rejected_non_food:
+        return {
+            "status": "no_food",
+            "food_detected": False,
+            "message": non_food_reason or "No food detected. Please capture a fruit, vegetable, or supported food item.",
+            "error": {
+                "code": "NON_FOOD_DETECTED",
+                "message": non_food_reason or "No food detected."
+            }
+        }
+
+    # ---------------------------------------------------------
+    # STAGE 3: Binary Food vs Non-Food Validation Gate
+    # ---------------------------------------------------------
+    has_explicit_coco_food = any(
+        d.get("detected_label") in ("banana", "apple", "sandwich", "orange", "broccoli", "carrot", "hot dog", "pizza", "donut", "cake")
+        for d in raw_detections
+    )
+
+    is_food_frame, food_frame_prob, frame_val_details = validate_food_presence(
+        image_bgr,
+        threshold=FOOD_VALIDATION_THRESHOLD
+    )
+
+    if not has_explicit_coco_food and not is_food_frame:
+        return {
+            "status": "no_food",
+            "food_detected": False,
+            "message": "No food detected. Please capture a fruit, vegetable, or supported food item.",
+            "error": {
+                "code": "NO_FOOD_DETECTED",
+                "message": "No food detected in the image. Please point the camera at a fruit, vegetable, or supported food item."
+            },
+            "validation": frame_val_details
+        }
+
+    # ---------------------------------------------------------
+    # STAGE 4: Food Classification & Confidence Validation
+    # ---------------------------------------------------------
+    classes_meta = get_classes_metadata().get("classes", {})
+    primary_det = raw_detections[0] if raw_detections else {
+        "detected_label": "produce_candidate",
+        "bbox": {"x1": 0, "y1": 0, "x2": image_bgr.shape[1], "y2": image_bgr.shape[0]}
     }
 
-    detected_item = None
-    for keyword, name in non_core_items.items():
-        if keyword in filename:
-            detected_item = name
+    det_label = primary_det.get("detected_label", "").lower()
+    bbox = primary_det.get("bbox", {"x1": 0, "y1": 0, "x2": image_bgr.shape[1], "y2": image_bgr.shape[0]})
+    cropped = crop_bounding_box(image_bgr, bbox)
+
+    matched_key = None
+    for key, meta in classes_meta.items():
+        aliases = meta.get("detector_aliases", []) + [key]
+        if any(alias in det_label for alias in aliases):
+            matched_key = key
             break
 
-
-    if detected_item:
-        condition = "Fresh"
-        if "spoiled" in filename or "spoile" in filename:
-            condition = "Spoiled"
-        elif "fresh" in filename:
-            condition = "Fresh"
-
-        confidence = 98.0
-        cond_prefix = "spoile" if condition == "Spoiled" else "fresh"
-        label = f"{cond_prefix}{detected_item.lower().replace(' ', '')}"
-        dummy_top = [
-            {
-                "label": label,
-                "item": detected_item,
-                "condition": condition,
-                "confidence": confidence,
-                "raw_confidence": confidence
+    # If unverified proposal, validate the cropped region as well
+    if matched_key is None:
+        is_crop_food, crop_prob, _ = validate_food_presence(cropped, threshold=FOOD_VALIDATION_THRESHOLD)
+        if not is_crop_food:
+            return {
+                "status": "no_food",
+                "food_detected": False,
+                "message": "No food detected. Please capture a fruit, vegetable, or supported food item.",
+                "error": {
+                    "code": "NO_FOOD_DETECTED",
+                    "message": "No food detected in candidate crop."
+                }
             }
-        ]
 
+    # ---------------------------------------------------------
+    # STAGE 5: Freshness Analysis (ONLY after food_detected == True)
+    # ---------------------------------------------------------
+    freshness_result = evaluate_freshness_for_item(cropped, item_key=matched_key)
+    raw_conf = freshness_result.get("freshness_confidence")
+    if raw_conf is None:
+        conf = float(primary_det.get("confidence", 0.85))
+    else:
+        conf = float(raw_conf)
+    is_confident = freshness_result.get("is_confident", True)
+
+    # Enforce minimum food confidence threshold (0.60)
+    if matched_key is None and (not is_confident or conf < FOOD_CONFIDENCE_THRESHOLD):
         return {
-            "label": label,
-            "item": detected_item,
-            "condition": condition,
-            "confidence": confidence,
-            "raw_confidence": confidence,
-            "top_predictions": dummy_top,
-            "stability_warning": ""
+            "status": "low_confidence",
+            "food_detected": False,
+            "message": "The food could not be identified confidently. Please try a clearer image.",
+            "error": {
+                "code": "LOW_CONFIDENCE",
+                "message": "The food could not be identified confidently. Please try a closer image with better lighting."
+            }
         }
 
-    image = preprocess_image(image_path)
-
-    if USE_TFLITE:
-        current_interpreter = load_model_once()
-        input_details = current_interpreter.get_input_details()
-        output_details = current_interpreter.get_output_details()
-        current_interpreter.set_tensor(input_details[0]['index'], image)
-        current_interpreter.invoke()
-        prediction = current_interpreter.get_tensor(output_details[0]['index'])
-    else:
-        current_model = load_model_once()
-        if current_model is None:
-            raise RuntimeError("No model loaded for inference.")
-        prediction = current_model.predict(image, verbose=0)
-
-    top_predictions = get_top_predictions(prediction, top_n=3)
-    best_result = top_predictions[0]
-
-    stability_warning = check_prediction_stability(top_predictions)
+    item_name = freshness_result.get("item", primary_det.get("display_name", "Food Item"))
+    condition = freshness_result.get("freshness_status", "Fresh")
+    conf_pct = round(conf * 100, 2) if conf <= 1.0 else round(conf, 2)
+    stability_warning = freshness_result.get("stability_warning", "")
+    breakdown = freshness_result.get("breakdown", [])
 
     return {
-        "label": best_result["label"],
-        "item": best_result["item"],
-        "condition": best_result["condition"],
-        "confidence": best_result["confidence"],
-        "raw_confidence": best_result["raw_confidence"],
-        "top_predictions": top_predictions,
+        "status": "success",
+        "food_detected": True,
+        "item": item_name,
+        "food_name": item_name,
+        "condition": condition,
+        "confidence": conf_pct,
+        "label": f"{condition.lower()}{item_name.lower().replace(' ', '')}",
+        "category": freshness_result.get("category", "Produce"),
+        "top_predictions": breakdown,
         "stability_warning": stability_warning
     }
