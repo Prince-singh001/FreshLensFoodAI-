@@ -91,7 +91,7 @@ tmp/
 # =========================
 # Trained / Generated Models
 # =========================
-models/
+models/*`r`n!models/production/`r`n!models/production/*.h5`r`n!models/production/*.tflite`r`n!models/production/*.json`r`n!models/production/*.pt
 
 # =========================
 # Reports / Generated Outputs
@@ -130,3 +130,4 @@ backend/data/*
 # OPTION 2:
 # Keep model uploaded (Recommended for project demo)
 # Leave backend/models/ visible
+`r`n# FreshLens production models`r`n!models/`n!models/production/`n!models/production/*.h5`n!models/production/*.tflite`n!models/production/*.json`n!models/production/*.pt

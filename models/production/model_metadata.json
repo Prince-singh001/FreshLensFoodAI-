@@ -1,0 +1,31 @@
+{
+  "model_name": "freshlens_mobilenetv2_freshness",
+  "legacy_model_name": "safebite_mobilenetv2_freshness",
+  "version": "1.0.0",
+  "framework": "TensorFlow / Keras 3.x",
+  "base_architecture": "MobileNetV2 (ImageNet pretrained backbone)",
+  "input_shape": [1, 224, 224, 3],
+  "num_classes": 18,
+  "supported_produce_pairs": [
+    {"item": "Apple", "fresh_class": "freshapples", "spoiled_class": "spoileapples"},
+    {"item": "Banana", "fresh_class": "freshbanana", "spoiled_class": "spoilebanana"},
+    {"item": "Orange", "fresh_class": "freshoranges", "spoiled_class": "spoileoranges"},
+    {"item": "Tomato", "fresh_class": "freshtomato", "spoiled_class": "spoiletomato"},
+    {"item": "Potato", "fresh_class": "freshpotato", "spoiled_class": "spoilepotato"},
+    {"item": "Cucumber", "fresh_class": "freshcucumber", "spoiled_class": "spoilecucumber"},
+    {"item": "Bitter Gourd", "fresh_class": "freshbittergroud", "spoiled_class": "spoilebittergroud"},
+    {"item": "Onion", "fresh_class": "freshonion", "spoiled_class": "spoileonion"},
+    {"item": "Carrot", "fresh_class": "freshcarrot", "spoiled_class": "spoilecarrot"}
+  ],
+  "quantization": "TFLite Float32 with Default Optimization",
+  "deployment_target": "Cloud Web API (Render), Edge & Mobile",
+  "license": "MIT",
+  "evaluation_metrics": {
+    "test_samples": 6780,
+    "test_accuracy": 0.9329,
+    "precision": 0.9445,
+    "recall": 0.9329,
+    "f1": 0.9323,
+    "note": "Evaluated on genuine 6,780 test images across 14 active classes without artificial score inflation."
+  }
+}
