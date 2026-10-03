@@ -1,4 +1,7 @@
 from datetime import datetime
+import time
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeoutError
+
 from flask import Blueprint, request, jsonify
 
 from . import api_bp
@@ -20,6 +23,11 @@ except ImportError:
     from backend.config import ENV
     from backend.utils.logger import logger
 
+
+prediction_executor = ThreadPoolExecutor(max_workers=1)
+PREDICTION_TIMEOUT_SECONDS = 90
+
+
 @api_bp.route("/health", methods=["GET"])
 def health_check():
     return jsonify({
@@ -34,79 +42,237 @@ def health_check():
 
 @api_bp.route("/classes", methods=["GET"])
 def list_classes():
-    meta = get_classes_metadata()
-    return jsonify({
-        "success": True,
-        "total_classes": len(meta.get("classes", {})),
-        "data": meta.get("classes", {})
-    }), 200
+    try:
+        meta = get_classes_metadata()
+
+        return jsonify({
+            "success": True,
+            "total_classes": len(meta.get("classes", {})),
+            "data": meta.get("classes", {})
+        }), 200
+
+    except Exception as e:
+        logger.exception(f"Classes API error: {e}")
+
+        return jsonify({
+            "success": False,
+            "error": {
+                "code": "CLASSES_ERROR",
+                "message": "Failed to load food classes."
+            }
+        }), 500
 
 
 @api_bp.route("/predict", methods=["POST"])
 def predict():
-    if "file" not in request.files:
+    request_started = time.perf_counter()
+
+    try:
+        logger.info("Prediction request received.")
+
+        if "file" not in request.files:
+            logger.warning("Prediction request rejected: file field missing.")
+
+            return jsonify({
+                "success": False,
+                "error": {
+                    "code": "MISSING_FILE",
+                    "message": "No file part found in the request. Please provide an image file."
+                }
+            }), 400
+
+        file = request.files["file"]
+
+        if file is None:
+            logger.warning("Prediction request rejected: empty file object.")
+
+            return jsonify({
+                "success": False,
+                "error": {
+                    "code": "EMPTY_FILE",
+                    "message": "The uploaded file is empty."
+                }
+            }), 400
+
+        if not file.filename:
+            logger.warning("Prediction request rejected: filename missing.")
+
+            return jsonify({
+                "success": False,
+                "error": {
+                    "code": "EMPTY_FILENAME",
+                    "message": "Please provide a valid image file."
+                }
+            }), 400
+
+        selected_category = request.form.get(
+            "selected_category",
+            "All"
+        ).strip()
+
+        logger.info(
+            f"Prediction started | filename={file.filename} | "
+            f"category={selected_category}"
+        )
+
+        prediction_future = prediction_executor.submit(
+            prediction_service.process_image_upload,
+            file,
+            selected_category=selected_category
+        )
+
+        try:
+            result = prediction_future.result(
+                timeout=PREDICTION_TIMEOUT_SECONDS
+            )
+
+        except FutureTimeoutError:
+            elapsed = time.perf_counter() - request_started
+
+            logger.error(
+                f"Prediction timeout after {elapsed:.2f}s | "
+                f"filename={file.filename}"
+            )
+
+            return jsonify({
+                "success": False,
+                "error": {
+                    "code": "PREDICTION_TIMEOUT",
+                    "message": "Food analysis took too long. Please try another image."
+                },
+                "elapsed_time_ms": round(elapsed * 1000, 2)
+            }), 504
+
+        elapsed = time.perf_counter() - request_started
+
+        if result is None:
+            logger.error(
+                f"Prediction service returned None | "
+                f"elapsed={elapsed:.2f}s"
+            )
+
+            return jsonify({
+                "success": False,
+                "error": {
+                    "code": "EMPTY_PREDICTION_RESULT",
+                    "message": "The prediction service returned no result."
+                },
+                "elapsed_time_ms": round(elapsed * 1000, 2)
+            }), 500
+
+        if not isinstance(result, dict):
+            logger.error(
+                f"Invalid prediction result type: {type(result).__name__}"
+            )
+
+            return jsonify({
+                "success": False,
+                "error": {
+                    "code": "INVALID_PREDICTION_RESULT",
+                    "message": "The prediction service returned an invalid response."
+                },
+                "elapsed_time_ms": round(elapsed * 1000, 2)
+            }), 500
+
+        result.setdefault(
+            "inference_time_ms",
+            round(elapsed * 1000, 2)
+        )
+
+        logger.info(
+            f"Prediction completed successfully | "
+            f"elapsed={elapsed:.2f}s | "
+            f"success={result.get('success')} | "
+            f"status={result.get('status')}"
+        )
+
+        is_valid_inference = (
+            result.get("success") is True
+            or result.get("status") in (
+                "no_food",
+                "low_confidence",
+                "poor_image_quality"
+            )
+        )
+
+        status_code = 200 if is_valid_inference else 422
+
+        return jsonify(result), status_code
+
+    except Exception as e:
+        elapsed = time.perf_counter() - request_started
+
+        logger.exception(
+            f"Prediction API error after {elapsed:.2f}s: {e}"
+        )
+
         return jsonify({
             "success": False,
             "error": {
-                "code": "MISSING_FILE",
-                "message": "No file part found in the request. Please provide an image file."
-            }
-        }), 400
-
-    file = request.files["file"]
-    selected_category = request.form.get("selected_category", "All").strip()
-
-    result = prediction_service.process_image_upload(file, selected_category=selected_category)
-    # Model classification outcomes (including no_food, low_confidence, poor_image_quality) return HTTP 200 with structured status
-    is_valid_inference = result.get("success") or result.get("status") in ("no_food", "low_confidence", "poor_image_quality")
-    status_code = 200 if is_valid_inference else 422
-    return jsonify(result), status_code
+                "code": "PREDICTION_ERROR",
+                "message": "Failed to analyze the uploaded image."
+            },
+            "elapsed_time_ms": round(elapsed * 1000, 2)
+        }), 500
 
 
 @api_bp.route("/feedback", methods=["POST"])
 def submit_feedback():
-    data = request.get_json(silent=True) or request.form.to_dict()
-    if not data:
+    try:
+        data = request.get_json(silent=True) or request.form.to_dict()
+
+        if not data:
+            return jsonify({
+                "success": False,
+                "error": {
+                    "code": "INVALID_BODY",
+                    "message": "Request body must be valid JSON or form data."
+                }
+            }), 400
+
+        image_url = data.get("image_url", "").strip()
+        label = data.get("label", "").strip()
+        predicted_class = data.get("predicted_class", label).strip()
+        correct_class = data.get("correct_class", label).strip()
+        notes = data.get("notes", "").strip()
+
+        if not image_url:
+            return jsonify({
+                "success": False,
+                "error": {
+                    "code": "MISSING_IMAGE_URL",
+                    "message": "Field 'image_url' is required."
+                }
+            }), 400
+
+        if not correct_class:
+            return jsonify({
+                "success": False,
+                "error": {
+                    "code": "MISSING_CORRECT_CLASS",
+                    "message": "Field 'correct_class' or 'label' is required."
+                }
+            }), 400
+
+        res = feedback_service.submit_feedback(
+            image_url=image_url,
+            predicted_class=predicted_class,
+            correct_class=correct_class,
+            user_notes=notes
+        )
+
+        return jsonify(res), 200
+
+    except Exception as e:
+        logger.exception(f"Feedback API error: {e}")
+
         return jsonify({
             "success": False,
             "error": {
-                "code": "INVALID_BODY",
-                "message": "Request body must be valid JSON or form data."
+                "code": "FEEDBACK_ERROR",
+                "message": "Failed to submit feedback."
             }
-        }), 400
-
-    image_url = data.get("image_url", "").strip()
-    # Support both new and legacy parameter names
-    label = data.get("label", "").strip()
-    predicted_class = data.get("predicted_class", label).strip()
-    correct_class = data.get("correct_class", label).strip()
-    notes = data.get("notes", "").strip()
-
-    if not image_url:
-        return jsonify({
-            "success": False,
-            "error": {
-                "code": "MISSING_IMAGE_URL",
-                "message": "Field 'image_url' is required."
-            }
-        }), 400
-
-    if not correct_class:
-        return jsonify({
-            "success": False,
-            "error": {
-                "code": "MISSING_CORRECT_CLASS",
-                "message": "Field 'correct_class' or 'label' is required."
-            }
-        }), 400
-
-    res = feedback_service.submit_feedback(
-        image_url=image_url,
-        predicted_class=predicted_class,
-        correct_class=correct_class,
-        user_notes=notes
-    )
-    return jsonify(res), 200
+        }), 500
 
 
 @api_bp.route("/history", methods=["GET"])
@@ -117,46 +283,83 @@ def get_history():
     except ValueError:
         limit, offset = 50, 0
 
-    records = history_service.get_all(limit=limit, offset=offset)
-    total = history_service.count()
+    try:
+        records = history_service.get_all(
+            limit=limit,
+            offset=offset
+        )
 
-    return jsonify({
-        "success": True,
-        "total": total,
-        "limit": limit,
-        "offset": offset,
-        "data": records
-    }), 200
+        total = history_service.count()
+
+        return jsonify({
+            "success": True,
+            "total": total,
+            "limit": limit,
+            "offset": offset,
+            "data": records
+        }), 200
+
+    except Exception as e:
+        logger.exception(f"History API error: {e}")
+
+        return jsonify({
+            "success": False,
+            "error": {
+                "code": "HISTORY_ERROR",
+                "message": "Failed to load scan history."
+            }
+        }), 500
 
 
 @api_bp.route("/history", methods=["DELETE"])
 def delete_history():
-    record_id = request.args.get("id") or (request.get_json(silent=True) or {}).get("id")
-    if record_id:
-        deleted = history_service.delete_by_id(record_id)
-        if deleted:
+    try:
+        record_id = request.args.get("id")
+
+        if not record_id:
+            body = request.get_json(silent=True) or {}
+            record_id = body.get("id")
+
+        if record_id:
+            deleted = history_service.delete_by_id(record_id)
+
+            if deleted:
+                return jsonify({
+                    "success": True,
+                    "message": f"Scan record {record_id} deleted successfully."
+                }), 200
+
             return jsonify({
-                "success": True,
-                "message": f"Scan record {record_id} deleted successfully."
-            }), 200
+                "success": False,
+                "error": {
+                    "code": "NOT_FOUND",
+                    "message": f"Record with ID '{record_id}' not found."
+                }
+            }), 404
+
+        history_service.clear()
+
+        return jsonify({
+            "success": True,
+            "message": "All scan history cleared successfully."
+        }), 200
+
+    except Exception as e:
+        logger.exception(f"Delete history API error: {e}")
+
         return jsonify({
             "success": False,
             "error": {
-                "code": "NOT_FOUND",
-                "message": f"Record with ID '{record_id}' not found."
+                "code": "HISTORY_DELETE_ERROR",
+                "message": "Failed to delete scan history."
             }
-        }), 404
-
-    history_service.clear()
-    return jsonify({
-        "success": True,
-        "message": "All scan history cleared successfully."
-    }), 200
+        }), 500
 
 
 @api_bp.route("/chat", methods=["POST"])
 def chat():
     data = request.get_json(silent=True) or {}
+
     message = data.get("message", "").strip()
     conversation_id = data.get("conversation_id")
     language = data.get("language", "en")
@@ -178,6 +381,7 @@ def chat():
             language=language,
             scan_context=scan_context
         )
+
         return jsonify({
             "success": True,
             "conversation_id": agent_res.get("conversation_id"),
@@ -187,8 +391,10 @@ def chat():
             "tool_used": agent_res.get("tool_used"),
             "sources": agent_res.get("sources", [])
         }), 200
+
     except Exception as e:
-        logger.error(f"Chatbot execution error: {e}")
+        logger.exception(f"Chatbot execution error: {e}")
+
         return jsonify({
             "success": False,
             "error": {
@@ -200,31 +406,52 @@ def chat():
 
 @api_bp.route("/food/<food_name>", methods=["GET"])
 def get_food_info(food_name):
-    """Returns detailed metadata, storage guidelines and nutrition for a specific food."""
-    metadata = get_classes_metadata().get("classes", {})
-    query = food_name.lower().strip()
+    try:
+        metadata = get_classes_metadata().get("classes", {})
+        query = food_name.lower().strip()
 
-    for key, data in metadata.items():
-        aliases = data.get("detector_aliases", []) + [key, data.get("display_name", "").lower()]
-        if any(alias == query or alias in query or query in alias for alias in aliases):
-            return jsonify({
-                "success": True,
-                "data": {
-                    "key": key,
-                    "name": data.get("display_name"),
-                    "display_name": data.get("display_name"),
-                    "category": data.get("category"),
-                    "freshness_supported": data.get("freshness_supported"),
-                    "storage_tip": data.get("storage_tip"),
-                    "safety_guideline": data.get("safety_guideline"),
-                    "nutrition": data.get("nutrition")
-                }
-            }), 200
+        for key, data in metadata.items():
+            aliases = data.get("detector_aliases", []) + [
+                key,
+                data.get("display_name", "").lower()
+            ]
 
-    return jsonify({
-        "success": False,
-        "error": {
-            "code": "NOT_FOUND",
-            "message": f"Food item '{food_name}' is not currently in the catalog."
-        }
-    }), 404
+            if any(
+                alias == query or
+                alias in query or
+                query in alias
+                for alias in aliases
+                if alias
+            ):
+                return jsonify({
+                    "success": True,
+                    "data": {
+                        "key": key,
+                        "name": data.get("display_name"),
+                        "display_name": data.get("display_name"),
+                        "category": data.get("category"),
+                        "freshness_supported": data.get("freshness_supported"),
+                        "storage_tip": data.get("storage_tip"),
+                        "safety_guideline": data.get("safety_guideline"),
+                        "nutrition": data.get("nutrition")
+                    }
+                }), 200
+
+        return jsonify({
+            "success": False,
+            "error": {
+                "code": "NOT_FOUND",
+                "message": f"Food item '{food_name}' is not currently in the catalog."
+            }
+        }), 404
+
+    except Exception as e:
+        logger.exception(f"Food information API error: {e}")
+
+        return jsonify({
+            "success": False,
+            "error": {
+                "code": "FOOD_INFO_ERROR",
+                "message": "Failed to load food information."
+            }
+        }), 500
