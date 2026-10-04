@@ -7,7 +7,6 @@ from werkzeug.datastructures import FileStorage
 try:
     from config import (
         UPLOAD_FOLDER,
-        CONFIDENCE_THRESHOLD,
         FOOD_CONFIDENCE_THRESHOLD,
         FOOD_VALIDATION_THRESHOLD
     )
@@ -25,7 +24,6 @@ try:
 except ImportError:
     from backend.config import (
         UPLOAD_FOLDER,
-        CONFIDENCE_THRESHOLD,
         FOOD_CONFIDENCE_THRESHOLD,
         FOOD_VALIDATION_THRESHOLD
     )
@@ -44,11 +42,112 @@ except ImportError:
 
 class PredictionService:
 
-    def _log_stage(self, stage: str, started_at: float):
-        elapsed = (time.perf_counter() - started_at) * 1000
+    def _log_stage(
+        self,
+        stage: str,
+        started_at: float
+    ):
+        elapsed = (
+            time.perf_counter()
+            - started_at
+        ) * 1000
+
         logger.info(
             f"[PREDICT] {stage} completed in {elapsed:.2f} ms"
         )
+
+    def _calculate_iou(
+        self,
+        box_a: Dict[str, int],
+        box_b: Dict[str, int]
+    ) -> float:
+
+        x1 = max(
+            box_a["x1"],
+            box_b["x1"]
+        )
+
+        y1 = max(
+            box_a["y1"],
+            box_b["y1"]
+        )
+
+        x2 = min(
+            box_a["x2"],
+            box_b["x2"]
+        )
+
+        y2 = min(
+            box_a["y2"],
+            box_b["y2"]
+        )
+
+        width = max(
+            0,
+            x2 - x1
+        )
+
+        height = max(
+            0,
+            y2 - y1
+        )
+
+        intersection = width * height
+
+        if intersection <= 0:
+            return 0.0
+
+        area_a = max(
+            0,
+            box_a["x2"] - box_a["x1"]
+        ) * max(
+            0,
+            box_a["y2"] - box_a["y1"]
+        )
+
+        area_b = max(
+            0,
+            box_b["x2"] - box_b["x1"]
+        ) * max(
+            0,
+            box_b["y2"] - box_b["y1"]
+        )
+
+        union = (
+            area_a
+            + area_b
+            - intersection
+        )
+
+        if union <= 0:
+            return 0.0
+
+        return intersection / union
+
+    def _is_duplicate_object(
+        self,
+        bbox: Dict[str, int],
+        processed_objects: List[Dict[str, Any]]
+    ) -> bool:
+
+        for existing in processed_objects:
+
+            existing_bbox = existing.get(
+                "bbox"
+            )
+
+            if not existing_bbox:
+                continue
+
+            overlap = self._calculate_iou(
+                bbox,
+                existing_bbox
+            )
+
+            if overlap >= 0.68:
+                return True
+
+        return False
 
     def process_image_upload(
         self,
@@ -65,9 +164,12 @@ class PredictionService:
         )
 
         try:
+
             stage_started = time.perf_counter()
 
-            is_valid_file, safe_filename, file_error = validate_uploaded_file(file)
+            is_valid_file, safe_filename, file_error = (
+                validate_uploaded_file(file)
+            )
 
             self._log_stage(
                 "File validation",
@@ -75,23 +177,32 @@ class PredictionService:
             )
 
             if not is_valid_file:
-                logger.warning(
-                    f"[PREDICT] Invalid file: {file_error}"
-                )
 
                 return {
                     "success": False,
                     "status": "invalid_file",
                     "error": {
                         "code": "INVALID_IMAGE",
-                        "message": file_error or "Invalid image file uploaded."
+                        "message": (
+                            file_error
+                            or "Invalid image file uploaded."
+                        )
                     }
                 }
 
-            os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+            os.makedirs(
+                UPLOAD_FOLDER,
+                exist_ok=True
+            )
 
-            timestamp_prefix = time.strftime("%Y%m%d%H%M%S_")
-            stored_filename = f"{timestamp_prefix}{safe_filename}"
+            timestamp_prefix = time.strftime(
+                "%Y%m%d%H%M%S_"
+            )
+
+            stored_filename = (
+                f"{timestamp_prefix}{safe_filename}"
+            )
+
             stored_path = os.path.join(
                 UPLOAD_FOLDER,
                 stored_filename
@@ -99,28 +210,33 @@ class PredictionService:
 
             stage_started = time.perf_counter()
 
-            file.save(stored_path)
+            file.save(
+                stored_path
+            )
 
             self._log_stage(
                 "File save",
                 stage_started
             )
 
-            if not os.path.exists(stored_path):
-                logger.error(
-                    f"[PREDICT] Saved file does not exist: {stored_path}"
-                )
+            if not os.path.exists(
+                stored_path
+            ):
 
                 return {
                     "success": False,
                     "status": "invalid_file",
                     "error": {
                         "code": "FILE_SAVE_FAILED",
-                        "message": "Uploaded image could not be saved."
+                        "message": (
+                            "Uploaded image could not be saved."
+                        )
                     }
                 }
 
-            file_size = os.path.getsize(stored_path)
+            file_size = os.path.getsize(
+                stored_path
+            )
 
             logger.info(
                 f"[PREDICT] Saved image | "
@@ -130,8 +246,14 @@ class PredictionService:
 
             stage_started = time.perf_counter()
 
-            is_quality_ok, quality_code, quality_msg, image_bgr, metrics = (
-                validate_image_for_inference(stored_path)
+            (
+                is_quality_ok,
+                quality_code,
+                quality_msg,
+                image_bgr,
+                metrics
+            ) = validate_image_for_inference(
+                stored_path
             )
 
             self._log_stage(
@@ -140,55 +262,43 @@ class PredictionService:
             )
 
             if not is_quality_ok:
-                logger.warning(
-                    f"[PREDICT] Image quality rejected | "
-                    f"code={quality_code} | "
-                    f"message={quality_msg}"
-                )
 
                 return {
                     "success": False,
                     "status": "poor_image_quality",
-                    "image_url": f"/static/uploads/{stored_filename}",
+                    "image_url": (
+                        f"/static/uploads/{stored_filename}"
+                    ),
                     "error": {
-                        "code": quality_code or "POOR_IMAGE_QUALITY",
+                        "code": (
+                            quality_code
+                            or "POOR_IMAGE_QUALITY"
+                        ),
                         "message": (
                             quality_msg
-                            or "Please upload a clearer and better-lit image."
+                            or "Please upload a clearer image."
                         )
                     },
                     "quality_metrics": metrics
                 }
 
             if image_bgr is None:
-                logger.error(
-                    "[PREDICT] Image quality service returned no image."
-                )
 
                 return {
                     "success": False,
                     "status": "invalid_file",
-                    "image_url": f"/static/uploads/{stored_filename}",
+                    "image_url": (
+                        f"/static/uploads/{stored_filename}"
+                    ),
                     "error": {
                         "code": "IMAGE_DECODE_FAILED",
-                        "message": "The uploaded image could not be decoded."
+                        "message": (
+                            "The uploaded image could not be decoded."
+                        )
                     }
                 }
 
-            if len(image_bgr.shape) < 2:
-                logger.error(
-                    "[PREDICT] Invalid decoded image shape."
-                )
-
-                return {
-                    "success": False,
-                    "status": "invalid_file",
-                    "image_url": f"/static/uploads/{stored_filename}",
-                    "error": {
-                        "code": "INVALID_IMAGE_SHAPE",
-                        "message": "The uploaded image has an invalid format."
-                    }
-                }
+            height, width = image_bgr.shape[:2]
 
             logger.info(
                 f"[PREDICT] Image decoded | "
@@ -201,8 +311,12 @@ class PredictionService:
                 "[PREDICT] Starting object detection..."
             )
 
-            raw_detections, is_rejected_non_food, non_food_reason = (
-                detect_objects_in_image(image_bgr)
+            (
+                raw_detections,
+                is_rejected_non_food,
+                non_food_reason
+            ) = detect_objects_in_image(
+                image_bgr
             )
 
             self._log_stage(
@@ -217,19 +331,17 @@ class PredictionService:
             )
 
             if is_rejected_non_food:
-                logger.info(
-                    "[PREDICT] Non-food image rejected by detector."
-                )
 
                 return {
                     "success": False,
                     "status": "no_food",
                     "food_detected": False,
-                    "image_url": f"/static/uploads/{stored_filename}",
+                    "image_url": (
+                        f"/static/uploads/{stored_filename}"
+                    ),
                     "message": (
                         non_food_reason
-                        or "No food detected. Please capture a fruit, "
-                        "vegetable, or supported food item."
+                        or "No food detected."
                     ),
                     "error": {
                         "code": "NON_FOOD_DETECTED",
@@ -240,43 +352,17 @@ class PredictionService:
                     }
                 }
 
-            explicit_food_labels = {
-                "banana",
-                "apple",
-                "sandwich",
-                "orange",
-                "broccoli",
-                "carrot",
-                "hot dog",
-                "pizza",
-                "donut",
-                "cake"
-            }
-
-            has_explicit_coco_food = any(
-                str(d.get("detected_label", "")).lower()
-                in explicit_food_labels
-                for d in raw_detections
-            )
-
-            logger.info(
-                f"[PREDICT] Explicit food detected: "
-                f"{has_explicit_coco_food}"
-            )
-
             stage_started = time.perf_counter()
-
-            logger.info(
-                "[PREDICT] Starting food validation..."
-            )
 
             from ml.validator import validate_food_presence
 
-            is_food_frame, food_frame_prob, frame_val_details = (
-                validate_food_presence(
-                    image_bgr,
-                    threshold=FOOD_VALIDATION_THRESHOLD
-                )
+            (
+                is_food_frame,
+                food_frame_prob,
+                frame_val_details
+            ) = validate_food_presence(
+                image_bgr,
+                threshold=FOOD_VALIDATION_THRESHOLD
             )
 
             self._log_stage(
@@ -290,26 +376,23 @@ class PredictionService:
                 f"probability={food_frame_prob}"
             )
 
-            if not has_explicit_coco_food and not is_food_frame:
-                logger.info(
-                    "[PREDICT] Whole frame rejected as non-food."
-                )
+            if not is_food_frame:
 
                 return {
                     "success": False,
                     "status": "no_food",
                     "food_detected": False,
-                    "image_url": f"/static/uploads/{stored_filename}",
+                    "image_url": (
+                        f"/static/uploads/{stored_filename}"
+                    ),
                     "message": (
-                        "No food detected. Please point the camera at "
+                        "No food detected. Please capture "
                         "a fruit, vegetable, or supported food item."
                     ),
                     "error": {
                         "code": "NO_FOOD_DETECTED",
                         "message": (
-                            "No food detected in the image. Please point "
-                            "the camera at a fruit, vegetable, or supported "
-                            "food item."
+                            "No food detected in the image."
                         )
                     },
                     "validation": frame_val_details
@@ -327,43 +410,97 @@ class PredictionService:
                 stage_started
             )
 
-            processed_objects: List[Dict[str, Any]] = []
+            processed_objects = []
 
             total_fruits = 0
             total_vegetables = 0
             total_foods = 0
 
             logger.info(
-                f"[PREDICT] Processing {len(raw_detections)} detections..."
+                f"[PREDICT] Processing "
+                f"{len(raw_detections)} candidate objects..."
             )
 
-            for index, det in enumerate(raw_detections):
+            for index, detection in enumerate(
+                raw_detections
+            ):
 
                 object_started = time.perf_counter()
 
-                det_label = str(
-                    det.get("detected_label", "")
-                ).lower()
-
-                bbox = det.get(
-                    "bbox",
-                    {
-                        "x1": 0,
-                        "y1": 0,
-                        "x2": image_bgr.shape[1],
-                        "y2": image_bgr.shape[0]
-                    }
+                bbox = detection.get(
+                    "bbox"
                 )
 
-                det_conf = det.get(
-                    "confidence",
-                    0.50
+                if not bbox:
+                    continue
+
+                bbox = {
+                    "x1": max(
+                        0,
+                        min(
+                            int(bbox["x1"]),
+                            width - 1
+                        )
+                    ),
+                    "y1": max(
+                        0,
+                        min(
+                            int(bbox["y1"]),
+                            height - 1
+                        )
+                    ),
+                    "x2": max(
+                        1,
+                        min(
+                            int(bbox["x2"]),
+                            width
+                        )
+                    ),
+                    "y2": max(
+                        1,
+                        min(
+                            int(bbox["y2"]),
+                            height
+                        )
+                    )
+                }
+
+                if bbox["x2"] <= bbox["x1"]:
+                    continue
+
+                if bbox["y2"] <= bbox["y1"]:
+                    continue
+
+                if self._is_duplicate_object(
+                    bbox,
+                    processed_objects
+                ):
+                    logger.info(
+                        f"[PREDICT] Object {index + 1} "
+                        f"skipped as duplicate."
+                    )
+                    continue
+
+                det_label = str(
+                    detection.get(
+                        "detected_label",
+                        ""
+                    )
+                ).lower()
+
+                det_conf = float(
+                    detection.get(
+                        "confidence",
+                        0.50
+                    )
+                    or 0.50
                 )
 
                 logger.info(
-                    f"[PREDICT] Object {index + 1} | "
+                    f"[PREDICT] Candidate {index + 1} | "
                     f"label={det_label} | "
-                    f"confidence={det_conf}"
+                    f"confidence={det_conf} | "
+                    f"bbox={bbox}"
                 )
 
                 stage_started = time.perf_counter()
@@ -379,71 +516,33 @@ class PredictionService:
                 )
 
                 if cropped is None:
-                    logger.warning(
-                        f"[PREDICT] Object {index + 1} crop failed."
-                    )
                     continue
 
-                matched_key = None
-
-                for key, meta in classes_meta.items():
-                    aliases = meta.get(
-                        "detector_aliases",
-                        []
-                    ) + [key]
-
-                    if any(
-                        str(alias).lower() in det_label
-                        for alias in aliases
-                        if alias
-                    ):
-                        matched_key = key
-                        break
-
-                logger.info(
-                    f"[PREDICT] Object {index + 1} matched key: "
-                    f"{matched_key}"
+                crop_height, crop_width = (
+                    cropped.shape[:2]
                 )
 
-                if matched_key is None:
-
-                    stage_started = time.perf_counter()
-
-                    is_crop_food, crop_food_prob, crop_details = (
-                        validate_food_presence(
-                            cropped,
-                            threshold=FOOD_VALIDATION_THRESHOLD
-                        )
-                    )
-
-                    self._log_stage(
-                        f"Object {index + 1} crop food validation",
-                        stage_started
-                    )
+                if crop_width < 40 or crop_height < 40:
 
                     logger.info(
-                        f"[PREDICT] Object {index + 1} crop validation | "
-                        f"is_food={is_crop_food} | "
-                        f"probability={crop_food_prob}"
+                        f"[PREDICT] Object {index + 1} "
+                        f"crop too small."
                     )
 
-                    if not is_crop_food:
-                        logger.info(
-                            f"[PREDICT] Object {index + 1} rejected."
-                        )
-                        continue
+                    continue
 
                 stage_started = time.perf_counter()
 
                 logger.info(
                     f"[PREDICT] Starting freshness analysis | "
-                    f"object={index + 1} | "
-                    f"item_key={matched_key}"
+                    f"object={index + 1}"
                 )
 
-                freshness_result = evaluate_freshness_for_item(
-                    cropped,
-                    item_key=matched_key
+                freshness_result = (
+                    evaluate_freshness_for_item(
+                        cropped,
+                        item_key=None
+                    )
                 )
 
                 self._log_stage(
@@ -451,28 +550,24 @@ class PredictionService:
                     stage_started
                 )
 
-                if not isinstance(freshness_result, dict):
-                    logger.error(
-                        f"[PREDICT] Invalid freshness result for "
-                        f"object {index + 1}"
-                    )
+                if not isinstance(
+                    freshness_result,
+                    dict
+                ):
                     continue
+
+                item_key = freshness_result.get(
+                    "item_key"
+                )
 
                 item_name = freshness_result.get(
                     "item",
-                    det.get(
-                        "display_name",
-                        "Produce Item"
-                    )
+                    "Produce Item"
                 )
 
                 category = freshness_result.get(
                     "category",
                     "Produce"
-                )
-
-                freshness = freshness_result.get(
-                    "freshness"
                 )
 
                 freshness_status = freshness_result.get(
@@ -484,82 +579,91 @@ class PredictionService:
                     freshness_result.get(
                         "freshness_confidence",
                         0.0
-                    ) or 0.0
-                )
-
-                stability_warn = freshness_result.get(
-                    "stability_warning",
-                    ""
-                )
-
-                is_confident = freshness_result.get(
-                    "is_confident",
-                    True
-                )
-
-                if (
-                    matched_key is None
-                    and (
-                        not is_confident
-                        or freshness_conf < FOOD_CONFIDENCE_THRESHOLD
                     )
-                ):
+                    or 0.0
+                )
+
+                is_confident = bool(
+                    freshness_result.get(
+                        "is_confident",
+                        False
+                    )
+                )
+
+                logger.info(
+                    f"[PREDICT] Object {index + 1} "
+                    f"classification | "
+                    f"item={item_name} | "
+                    f"condition={freshness_status} | "
+                    f"confidence={freshness_conf}"
+                )
+
+                if not is_confident:
+
                     logger.info(
                         f"[PREDICT] Object {index + 1} "
                         f"rejected due to low confidence."
                     )
+
                     continue
 
-                cat_lower = str(
+                category_lower = str(
                     category
                 ).lower()
 
-                if "fruit" in cat_lower:
+                if "fruit" in category_lower:
+
                     total_fruits += 1
-                elif "veg" in cat_lower:
+
+                elif "veg" in category_lower:
+
                     total_vegetables += 1
+
                 else:
+
                     total_foods += 1
 
                 obj_record = {
-                    "id": det.get(
-                        "id",
-                        len(processed_objects) + 1
-                    ),
+                    "id": len(processed_objects) + 1,
                     "item": item_name,
-                    "item_key": freshness_result.get(
-                        "item_key",
-                        matched_key or "unknown"
+                    "item_key": (
+                        item_key
+                        or "unknown"
                     ),
                     "category": category,
                     "detection_confidence": round(
-                        float(det_conf),
+                        det_conf,
                         4
                     ),
-                    "freshness": freshness,
+                    "freshness": freshness_result.get(
+                        "freshness"
+                    ),
                     "freshness_status": freshness_status,
                     "freshness_confidence": round(
                         freshness_conf,
                         4
                     ),
                     "bbox": bbox,
-                    "stability_warning": stability_warn,
+                    "stability_warning": freshness_result.get(
+                        "stability_warning",
+                        ""
+                    ),
                     "storage_tip": classes_meta.get(
-                        matched_key or "",
+                        item_key or "",
                         {}
                     ).get(
                         "storage_tip",
                         ""
                     ),
                     "safety_guideline": classes_meta.get(
-                        matched_key or "",
+                        item_key or "",
                         {}
                     ).get(
                         "safety_guideline",
                         ""
                     ),
                     "nutrition": classes_meta.get(
-                        matched_key or "",
+                        item_key or "",
                         {}
                     ).get(
                         "nutrition",
@@ -575,7 +679,7 @@ class PredictionService:
                     f"[PREDICT] Object {index + 1} completed | "
                     f"item={item_name} | "
                     f"status={freshness_status} | "
-                    f"total_time={(time.perf_counter() - object_started) * 1000:.2f} ms"
+                    f"time={(time.perf_counter() - object_started) * 1000:.2f} ms"
                 )
 
             logger.info(
@@ -585,47 +689,24 @@ class PredictionService:
 
             if not processed_objects:
 
-                if is_food_frame:
-                    logger.info(
-                        "[PREDICT] Food detected but confidence too low."
-                    )
-
-                    return {
-                        "success": False,
-                        "status": "low_confidence",
-                        "food_detected": False,
-                        "image_url": f"/static/uploads/{stored_filename}",
-                        "message": (
-                            "The food could not be identified confidently. "
-                            "Please try a clearer image."
-                        ),
-                        "error": {
-                            "code": "LOW_CONFIDENCE",
-                            "message": (
-                                "The food could not be identified confidently. "
-                                "Please try a closer image with better lighting."
-                            )
-                        }
-                    }
-
-                logger.info(
-                    "[PREDICT] No valid food objects survived validation."
-                )
-
                 return {
                     "success": False,
-                    "status": "no_food",
-                    "food_detected": False,
-                    "image_url": f"/static/uploads/{stored_filename}",
+                    "status": "low_confidence",
+                    "food_detected": bool(
+                        is_food_frame
+                    ),
+                    "image_url": (
+                        f"/static/uploads/{stored_filename}"
+                    ),
                     "message": (
-                        "No food detected. Please capture a fruit, "
-                        "vegetable, or supported food item."
+                        "Food was detected, but individual "
+                        "items could not be identified confidently."
                     ),
                     "error": {
-                        "code": "NO_FOOD_DETECTED",
+                        "code": "LOW_CONFIDENCE",
                         "message": (
-                            "No food detected. Please capture a fruit, "
-                            "vegetable, or supported food item."
+                            "Please use a clearer image with "
+                            "better lighting and less overlap."
                         )
                     }
                 }
@@ -664,32 +745,25 @@ class PredictionService:
             )
 
             if not write_success:
-                logger.warning(
-                    f"[PREDICT] Could not save annotated image: "
-                    f"{annotated_path}"
-                )
-
                 annotated_filename = stored_filename
-
-            elapsed_ms = round(
-                (
-                    time.perf_counter()
-                    - request_started
-                ) * 1000.0,
-                2
-            )
 
             primary_obj = processed_objects[0]
 
-            primary_item = primary_obj["item"]
+            primary_item = primary_obj[
+                "item"
+            ]
 
             primary_condition = primary_obj[
                 "freshness_status"
             ]
 
             primary_conf = (
-                primary_obj["freshness_confidence"]
-                or primary_obj["detection_confidence"]
+                primary_obj[
+                    "freshness_confidence"
+                ]
+                or primary_obj[
+                    "detection_confidence"
+                ]
             )
 
             primary_conf_pct = round(
@@ -699,16 +773,24 @@ class PredictionService:
 
             category_warning = ""
 
-            user_cat = selected_category.capitalize()
+            user_category = (
+                selected_category.capitalize()
+            )
 
             if (
-                user_cat not in ("All", "")
-                and user_cat != primary_obj["category"]
+                user_category not in (
+                    "All",
+                    ""
+                )
+                and user_category != primary_obj[
+                    "category"
+                ]
             ):
+
                 category_warning = (
-                    f"The image was recognized as "
-                    f"{primary_obj['category']}, "
-                    f"but you had '{selected_category}' selected."
+                    f"The image contains "
+                    f"{primary_obj['category']} items, "
+                    f"but '{selected_category}' was selected."
                 )
 
             summary = {
@@ -725,14 +807,22 @@ class PredictionService:
                 "status": "success",
                 "food_detected": True,
                 "food_name": primary_item,
-                "category": primary_obj["category"],
+                "category": primary_obj[
+                    "category"
+                ],
                 "image_url": (
                     f"/static/uploads/{stored_filename}"
                 ),
                 "annotated_image_url": (
                     f"/static/uploads/{annotated_filename}"
                 ),
-                "inference_time_ms": elapsed_ms,
+                "inference_time_ms": round(
+                    (
+                        time.perf_counter()
+                        - request_started
+                    ) * 1000,
+                    2
+                ),
                 "objects": processed_objects,
                 "summary": summary,
                 "condition": primary_condition,
@@ -742,21 +832,15 @@ class PredictionService:
                     f"{primary_item.lower().replace(' ', '')}"
                 ),
                 "message": (
-                    "Visually appears fresh based on trained "
-                    "model assessment. Always verify before consumption."
-                    if primary_condition == "Fresh"
-                    else (
-                        "Shows signs of spoilage or discoloration. "
-                        "Do not consume if spoiled."
-                        if primary_condition == "Spoiled"
-                        else (
-                            "Recognized food item. Freshness analysis "
-                            "not available for this category."
-                        )
-                    )
+                    "Food items analyzed individually. "
+                    "Always verify freshness before consumption."
                 ),
-                "selected_category": selected_category.capitalize(),
-                "detected_category": primary_obj["category"],
+                "selected_category": (
+                    selected_category.capitalize()
+                ),
+                "detected_category": primary_obj[
+                    "category"
+                ],
                 "warning": category_warning,
                 "stability_warning": primary_obj.get(
                     "stability_warning",
@@ -765,11 +849,17 @@ class PredictionService:
                 "top_predictions": [
                     {
                         "item": obj["item"],
-                        "condition": obj["freshness_status"],
+                        "condition": obj[
+                            "freshness_status"
+                        ],
                         "confidence": round(
                             (
-                                obj["freshness_confidence"]
-                                or obj["detection_confidence"]
+                                obj[
+                                    "freshness_confidence"
+                                ]
+                                or obj[
+                                    "detection_confidence"
+                                ]
                             ) * 100,
                             2
                         )
@@ -778,8 +868,6 @@ class PredictionService:
                 ]
             }
 
-            stage_started = time.perf_counter()
-
             history_record = {
                 "timestamp": time.strftime(
                     "%Y-%m-%d %H:%M:%S"
@@ -787,9 +875,15 @@ class PredictionService:
                 "food_name": primary_item,
                 "condition": primary_condition,
                 "confidence": primary_conf_pct,
-                "category": primary_obj["category"],
-                "selected_category": selected_category.capitalize(),
-                "detected_category": primary_obj["category"],
+                "category": primary_obj[
+                    "category"
+                ],
+                "selected_category": (
+                    selected_category.capitalize()
+                ),
+                "detected_category": primary_obj[
+                    "category"
+                ],
                 "image_url": (
                     f"/static/uploads/{stored_filename}"
                 ),
@@ -808,16 +902,13 @@ class PredictionService:
             }
 
             try:
+
                 history_service.add_record(
                     history_record
                 )
 
-                self._log_stage(
-                    "History save",
-                    stage_started
-                )
-
             except Exception as history_error:
+
                 logger.exception(
                     f"[PREDICT] History save failed: "
                     f"{history_error}"
@@ -825,27 +916,27 @@ class PredictionService:
 
             logger.info(
                 f"[PREDICT] REQUEST COMPLETED | "
-                f"food={primary_item} | "
+                f"primary={primary_item} | "
                 f"condition={primary_condition} | "
-                f"objects={len(processed_objects)} | "
-                f"total_time={elapsed_ms:.2f} ms"
+                f"objects={len(processed_objects)}"
             )
 
             return response_data
 
-        except Exception as e:
+        except Exception as error:
+
             elapsed_ms = round(
                 (
                     time.perf_counter()
                     - request_started
-                ) * 1000.0,
+                ) * 1000,
                 2
             )
 
             logger.exception(
                 f"[PREDICT] REQUEST FAILED | "
                 f"time={elapsed_ms:.2f} ms | "
-                f"error={e}"
+                f"error={error}"
             )
 
             return {
