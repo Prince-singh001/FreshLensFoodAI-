@@ -2,7 +2,6 @@ import os
 import json
 import threading
 import numpy as np
-from pathlib import Path
 from typing import Dict, Any, Optional
 
 try:
@@ -37,12 +36,6 @@ _legacy_class_names: Optional[Dict[int, str]] = None
 
 _keras_freshness_model = None
 _tflite_freshness_interpreter = None
-_detector_model = None
-
-ENABLE_YOLO_DETECTOR = (
-    os.getenv("FRESH_LENS_ENABLE_YOLO", "false").strip().lower()
-    in {"1", "true", "yes", "on"}
-)
 
 
 def get_classes_metadata() -> Dict[str, Any]:
@@ -64,8 +57,8 @@ def get_classes_metadata() -> Dict[str, Any]:
             _classes_metadata = json.load(f)
 
         logger.info(
-            f"Loaded {len(_classes_metadata.get('classes', {}))} classes from "
-            f"{CLASSES_CONFIG_PATH}"
+            f"Loaded {len(_classes_metadata.get('classes', {}))} classes "
+            f"from {CLASSES_CONFIG_PATH}"
         )
 
         return _classes_metadata
@@ -97,7 +90,7 @@ def get_legacy_class_indices() -> Dict[str, int]:
 
         if chosen_path is None:
             raise FileNotFoundError(
-                f"class_indices.json not found in any standard path: {candidates}"
+                "class_indices.json not found in any standard path."
             )
 
         with open(chosen_path, "r", encoding="utf-8") as f:
@@ -146,6 +139,7 @@ def _load_tflite_model():
         interpreter = tf.lite.Interpreter(
             model_path=str(TFLITE_MODEL_PATH)
         )
+
     except ImportError:
         import tflite_runtime.interpreter as tflite
 
@@ -161,23 +155,26 @@ def _load_tflite_model():
         input_shape = input_details[0]["shape"]
 
         if len(input_shape) == 4:
-            dummy = np.zeros(
-                tuple(input_shape),
-                dtype=np.float32
-            )
-
             try:
+                dummy = np.zeros(
+                    tuple(input_shape),
+                    dtype=np.float32
+                )
+
                 interpreter.set_tensor(
                     input_details[0]["index"],
                     dummy
                 )
+
                 interpreter.invoke()
+
                 logger.info(
                     "TFLite freshness model warmup completed successfully."
                 )
-            except Exception as warmup_error:
+
+            except Exception as error:
                 logger.warning(
-                    f"TFLite warmup skipped: {warmup_error}"
+                    f"TFLite warmup skipped: {error}"
                 )
 
     _tflite_freshness_interpreter = interpreter
@@ -235,7 +232,9 @@ def get_freshness_model():
     global _tflite_freshness_interpreter
 
     with _model_lock:
+
         if USE_TFLITE:
+
             if _tflite_freshness_interpreter is not None:
                 return _tflite_freshness_interpreter
 
@@ -252,6 +251,7 @@ def get_freshness_model():
                 f"Keras model not found at {KERAS_MODEL_PATH}. "
                 "Using TFLite model instead."
             )
+
             return _load_tflite_model()
 
         raise FileNotFoundError(
@@ -260,60 +260,9 @@ def get_freshness_model():
 
 
 def get_detector_model():
-    global _detector_model
+    logger.info(
+        "YOLO detector disabled in production. "
+        "Using lightweight image fallback."
+    )
 
-    if _detector_model is not None:
-        return _detector_model
-
-    if not ENABLE_YOLO_DETECTOR:
-        logger.info(
-            "YOLO detector disabled. Using lightweight image fallback."
-        )
-        return None
-
-    with _model_lock:
-        if _detector_model is not None:
-            return _detector_model
-
-        try:
-            from ultralytics import YOLO
-
-            local_weights = [
-                MODELS_DIR / "production" / "yolov8n.pt",
-                MODELS_DIR / "yolov8n.pt",
-                Path("yolov8n.pt")
-            ]
-
-            chosen_weight = None
-
-            for weight_path in local_weights:
-                if weight_path.exists():
-                    chosen_weight = str(weight_path)
-                    break
-
-            if chosen_weight is None:
-                logger.warning(
-                    "YOLO weights not found. Using lightweight image fallback."
-                )
-                return None
-
-            logger.info(
-                f"Loading Ultralytics YOLO detector with weights: "
-                f"{chosen_weight}"
-            )
-
-            _detector_model = YOLO(chosen_weight)
-
-            logger.info(
-                "Ultralytics YOLO detector loaded successfully."
-            )
-
-            return _detector_model
-
-        except Exception as error:
-            logger.warning(
-                f"YOLO detector unavailable: {error}. "
-                "Using lightweight image fallback."
-            )
-            _detector_model = None
-            return None
+    return None
