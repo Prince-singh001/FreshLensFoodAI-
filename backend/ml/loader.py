@@ -28,7 +28,7 @@ except ImportError:
     from backend.utils.logger import logger
 
 
-_model_lock = threading.Lock()
+_model_lock = threading.RLock()
 
 _classes_metadata: Optional[Dict[str, Any]] = None
 _legacy_class_indices: Optional[Dict[str, int]] = None
@@ -124,66 +124,49 @@ def _load_tflite_model():
     if _tflite_freshness_interpreter is not None:
         return _tflite_freshness_interpreter
 
-    logger.info(
-        f"Loading FreshLens AI TFLite model from {TFLITE_MODEL_PATH}..."
-    )
+    with _model_lock:
 
-    if not os.path.exists(TFLITE_MODEL_PATH):
-        raise FileNotFoundError(
-            f"TFLite model not found at {TFLITE_MODEL_PATH}"
+        if _tflite_freshness_interpreter is not None:
+            return _tflite_freshness_interpreter
+
+        logger.info(
+            f"Loading FreshLens AI TFLite model from {TFLITE_MODEL_PATH}..."
         )
 
-    try:
-        import tensorflow as tf
+        if not os.path.exists(TFLITE_MODEL_PATH):
+            raise FileNotFoundError(
+                f"TFLite model not found at {TFLITE_MODEL_PATH}"
+            )
 
-        interpreter = tf.lite.Interpreter(
-            model_path=str(TFLITE_MODEL_PATH)
+        try:
+            import tensorflow as tf
+
+            interpreter = tf.lite.Interpreter(
+                model_path=str(TFLITE_MODEL_PATH),
+                num_threads=1
+            )
+
+        except ImportError:
+            import tflite_runtime.interpreter as tflite
+
+            interpreter = tflite.Interpreter(
+                model_path=str(TFLITE_MODEL_PATH),
+                num_threads=1
+            )
+
+        interpreter.allocate_tensors()
+
+        _tflite_freshness_interpreter = interpreter
+
+        input_details = interpreter.get_input_details()
+        output_details = interpreter.get_output_details()
+
+        logger.info(
+            "[LOADER] TFLite interpreter allocated successfully | "
+            f"inputs={len(input_details)} | outputs={len(output_details)}"
         )
 
-    except ImportError:
-        import tflite_runtime.interpreter as tflite
-
-        interpreter = tflite.Interpreter(
-            model_path=str(TFLITE_MODEL_PATH)
-        )
-
-    interpreter.allocate_tensors()
-
-    input_details = interpreter.get_input_details()
-
-    if input_details:
-        input_shape = input_details[0]["shape"]
-
-        if len(input_shape) == 4:
-            try:
-                dummy = np.zeros(
-                    tuple(input_shape),
-                    dtype=np.float32
-                )
-
-                interpreter.set_tensor(
-                    input_details[0]["index"],
-                    dummy
-                )
-
-                interpreter.invoke()
-
-                logger.info(
-                    "TFLite freshness model warmup completed successfully."
-                )
-
-            except Exception as error:
-                logger.warning(
-                    f"TFLite warmup skipped: {error}"
-                )
-
-    _tflite_freshness_interpreter = interpreter
-
-    logger.info(
-        "TFLite freshness model loaded and allocated successfully."
-    )
-
-    return _tflite_freshness_interpreter
+        return _tflite_freshness_interpreter
 
 
 def _load_keras_model():
@@ -192,119 +175,70 @@ def _load_keras_model():
     if _keras_freshness_model is not None:
         return _keras_freshness_model
 
-    logger.info(
-        f"Loading FreshLens AI Keras model from {KERAS_MODEL_PATH}..."
-    )
+    with _model_lock:
 
-    if not os.path.exists(KERAS_MODEL_PATH):
-        raise FileNotFoundError(
-            f"Keras model not found at {KERAS_MODEL_PATH}"
+        if _keras_freshness_model is not None:
+            return _keras_freshness_model
+
+        logger.info(
+            f"Loading FreshLens AI Keras model from {KERAS_MODEL_PATH}..."
         )
 
-    import tensorflow as tf
+        if not os.path.exists(KERAS_MODEL_PATH):
+            raise FileNotFoundError(
+                f"Keras model not found at {KERAS_MODEL_PATH}"
+            )
 
-    model = tf.keras.models.load_model(
-        KERAS_MODEL_PATH,
-        compile=False
-    )
+        import tensorflow as tf
 
-    dummy = np.zeros(
-        (1, IMG_SIZE, IMG_SIZE, 3),
-        dtype=np.float32
-    )
+        model = tf.keras.models.load_model(
+            KERAS_MODEL_PATH,
+            compile=False
+        )
 
-    model.predict(
-        dummy,
-        verbose=0
-    )
+        _keras_freshness_model = model
 
-    _keras_freshness_model = model
+        logger.info(
+            "Keras freshness model loaded successfully."
+        )
 
-    logger.info(
-        "Keras freshness model loaded and warmed up successfully."
-    )
-
-    return _keras_freshness_model
+        return _keras_freshness_model
 
 
 def get_freshness_model():
     global _keras_freshness_model
     global _tflite_freshness_interpreter
 
-    with _model_lock:
+    if USE_TFLITE:
 
-        if USE_TFLITE:
+        if _tflite_freshness_interpreter is not None:
+            return _tflite_freshness_interpreter
 
-            if _tflite_freshness_interpreter is not None:
-                return _tflite_freshness_interpreter
+        return _load_tflite_model()
 
-            return _load_tflite_model()
+    if _keras_freshness_model is not None:
+        return _keras_freshness_model
 
-        if _keras_freshness_model is not None:
-            return _keras_freshness_model
+    if os.path.exists(KERAS_MODEL_PATH):
+        return _load_keras_model()
 
-        if os.path.exists(KERAS_MODEL_PATH):
-            return _load_keras_model()
-
-        if os.path.exists(TFLITE_MODEL_PATH):
-            logger.warning(
-                f"Keras model not found at {KERAS_MODEL_PATH}. "
-                "Using TFLite model instead."
-            )
-
-            return _load_tflite_model()
-
-        raise FileNotFoundError(
-            "Neither Keras nor TFLite freshness model was found."
+    if os.path.exists(TFLITE_MODEL_PATH):
+        logger.warning(
+            f"Keras model not found at {KERAS_MODEL_PATH}. "
+            "Using TFLite model instead."
         )
 
+        return _load_tflite_model()
 
-_detector_model = None
+    raise FileNotFoundError(
+        "Neither Keras nor TFLite freshness model was found."
+    )
 
 
 def get_detector_model():
-    global _detector_model
+    logger.info(
+        "[LOADER] YOLO detector disabled. "
+        "Using lightweight food localization fallback."
+    )
 
-    if _detector_model is not None:
-        return _detector_model
-
-    with _model_lock:
-        if _detector_model is not None:
-            return _detector_model
-
-        try:
-            from ultralytics import YOLO
-
-            candidates = [
-                MODELS_DIR / "production" / "yolov8n.pt",
-                MODELS_DIR / "yolov8n.pt",
-                MODELS_DIR.parent / "yolov8n.pt"
-            ]
-
-            chosen_path = None
-            for p in candidates:
-                if p.exists():
-                    chosen_path = str(p)
-                    break
-
-            if chosen_path is None:
-                logger.info("[LOADER] YOLO weights not found. Using lightweight produce localization.")
-                return None
-
-            logger.info(f"[LOADER] Loading YOLO detector from {chosen_path}...")
-            model = YOLO(chosen_path)
-
-            # Warmup once with small dummy input so request doesn't stall
-            dummy = np.zeros((320, 320, 3), dtype=np.uint8)
-            model(dummy, verbose=False)
-
-            _detector_model = model
-            logger.info("[LOADER] YOLO detector loaded and warmed up successfully.")
-            return _detector_model
-
-        except Exception as error:
-            logger.warning(
-                f"[LOADER] YOLO detector unavailable ({error}). "
-                "Using lightweight produce localization fallback."
-            )
-            return None
+    return None

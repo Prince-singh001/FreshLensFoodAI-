@@ -7,7 +7,8 @@ try:
         get_freshness_model,
         get_legacy_class_indices,
         get_legacy_class_names,
-        get_classes_metadata
+        get_classes_metadata,
+        _model_lock
     )
     from config import (
         USE_TFLITE,
@@ -22,7 +23,8 @@ except ImportError:
         get_freshness_model,
         get_legacy_class_indices,
         get_legacy_class_names,
-        get_classes_metadata
+        get_classes_metadata,
+        _model_lock
     )
     from backend.config import (
         USE_TFLITE,
@@ -38,9 +40,7 @@ def parse_class_label(
     label: str
 ) -> Tuple[str, str, str]:
 
-    clean = str(
-        label
-    ).lower().strip()
+    clean = str(label).lower().strip()
 
     if clean.startswith("fresh"):
         condition = "Fresh"
@@ -66,14 +66,8 @@ def parse_class_label(
 
     raw_item = (
         raw_item
-        .replace(
-            "bittergroud",
-            "bitter gourd"
-        )
-        .replace(
-            "bittergourd",
-            "bitter gourd"
-        )
+        .replace("bittergroud", "bitter gourd")
+        .replace("bittergourd", "bitter gourd")
     )
 
     raw_item = raw_item.strip()
@@ -100,10 +94,7 @@ def parse_class_label(
 
     canonical_key = key_mapping.get(
         raw_item,
-        raw_item.replace(
-            " ",
-            "_"
-        )
+        raw_item.replace(" ", "_")
     )
 
     display_names = {
@@ -120,10 +111,7 @@ def parse_class_label(
 
     display_name = display_names.get(
         canonical_key,
-        canonical_key.replace(
-            "_",
-            " "
-        ).title()
+        canonical_key.replace("_", " ").title()
     )
 
     return (
@@ -138,9 +126,7 @@ def _prepare_tflite_input(
     input_details: Dict[str, Any]
 ) -> np.ndarray:
 
-    tensor = preprocess_for_freshness(
-        image
-    )
+    tensor = preprocess_for_freshness(image)
 
     target_dtype = input_details.get(
         "dtype",
@@ -148,10 +134,7 @@ def _prepare_tflite_input(
     )
 
     if target_dtype == np.float32:
-
-        return tensor.astype(
-            np.float32
-        )
+        return tensor.astype(np.float32)
 
     scale, zero_point = input_details.get(
         "quantization",
@@ -165,7 +148,6 @@ def _prepare_tflite_input(
         ) + float(zero_point)
 
         if target_dtype == np.uint8:
-
             quantized = np.clip(
                 quantized,
                 0,
@@ -173,20 +155,15 @@ def _prepare_tflite_input(
             )
 
         elif target_dtype == np.int8:
-
             quantized = np.clip(
                 quantized,
                 -128,
                 127
             )
 
-        return quantized.astype(
-            target_dtype
-        )
+        return quantized.astype(target_dtype)
 
-    return tensor.astype(
-        target_dtype
-    )
+    return tensor.astype(target_dtype)
 
 
 def _normalize_probabilities(
@@ -217,9 +194,7 @@ def _normalize_probabilities(
             - np.max(values)
         )
 
-        exponent = np.exp(
-            shifted
-        )
+        exponent = np.exp(shifted)
 
         denominator = float(
             exponent.sum()
@@ -263,16 +238,11 @@ def run_freshness_inference(
             "Empty crop."
         )
 
-    input_tensor = preprocess_for_freshness(
-        cropped_image_bgr
-    )
-
     model = get_freshness_model()
 
     if USE_TFLITE:
 
         input_details = model.get_input_details()
-
         output_details = model.get_output_details()
 
         if not input_details:
@@ -292,22 +262,25 @@ def run_freshness_inference(
             input_info
         )
 
-        model.set_tensor(
-            input_info["index"],
-            input_tensor
-        )
+        with _model_lock:
 
-        model.invoke()
+            model.set_tensor(
+                input_info["index"],
+                input_tensor
+            )
 
-        output_info = output_details[0]
+            model.invoke()
 
-        output = model.get_tensor(
-            output_info["index"]
-        )
+            output_info = output_details[0]
+
+            raw_output = model.get_tensor(
+                output_info["index"]
+            )
+
+        output_dtype = raw_output.dtype
 
         probs = np.asarray(
-            output,
-            dtype=np.float32
+            raw_output
         )
 
         scale, zero_point = output_info.get(
@@ -316,27 +289,37 @@ def run_freshness_inference(
         )
 
         if (
-            probs.dtype != np.float32
+            output_dtype != np.float32
             and scale
             and scale > 0
         ):
 
             probs = (
-                probs - float(zero_point)
+                probs.astype(np.float32)
+                - float(zero_point)
             ) * float(scale)
 
-        probs = _normalize_probabilities(
+        else:
+            probs = probs.astype(
+                np.float32
+            )
+
+        return _normalize_probabilities(
             probs
         )
 
-        return probs
-
-    output = model(
-        input_tensor,
-        training=False
+    input_tensor = preprocess_for_freshness(
+        cropped_image_bgr
     )
 
-    probs = output.numpy()[0]
+    with _model_lock:
+
+        output = model(
+            input_tensor,
+            training=False
+        )
+
+        probs = output.numpy()[0]
 
     return _normalize_probabilities(
         probs
@@ -404,40 +387,106 @@ def _find_pair_indices(
 def classify_food_crop(
     cropped_image_bgr: np.ndarray
 ) -> Tuple[str, str, str, float]:
-    """
-    Identifies the food type of a cropped object using learned classifier features
-    across known produce classes (Apple, Banana, Bitter Gourd, Cucumber, Orange,
-    Potato, Tomato, Onion, Carrot).
-    Aggregates fresh and spoiled class probabilities to obtain total food identity score.
-    Returns:
-        (canonical_key, display_name, category, confidence)
-    """
-    if cropped_image_bgr is None or cropped_image_bgr.size == 0:
-        return ("unknown", "Unknown Food", "Food", 0.0)
 
-    probs = run_freshness_inference(cropped_image_bgr)
+    if (
+        cropped_image_bgr is None
+        or cropped_image_bgr.size == 0
+    ):
+        return (
+            "unknown",
+            "Unknown Food",
+            "Food",
+            0.0
+        )
+
+    probs = run_freshness_inference(
+        cropped_image_bgr
+    )
+
     class_names = get_legacy_class_names()
-    classes_meta = get_classes_metadata().get("classes", {})
 
-    if probs.size == 0 or len(class_names) == 0:
-        return ("unknown", "Unknown Food", "Food", 0.0)
+    classes_meta = get_classes_metadata().get(
+        "classes",
+        {}
+    )
+
+    if (
+        probs.size == 0
+        or len(class_names) == 0
+    ):
+        return (
+            "unknown",
+            "Unknown Food",
+            "Food",
+            0.0
+        )
 
     food_scores: Dict[str, float] = {}
-    for idx, prob in enumerate(probs[:len(class_names)]):
-        label = class_names[idx].lower().strip()
-        canonical_key, _, _ = parse_class_label(label)
-        food_scores[canonical_key] = food_scores.get(canonical_key, 0.0) + float(prob)
+
+    for idx, prob in enumerate(
+        probs[:len(class_names)]
+    ):
+
+        label = class_names[
+            idx
+        ].lower().strip()
+
+        canonical_key, _, _ = parse_class_label(
+            label
+        )
+
+        food_scores[
+            canonical_key
+        ] = (
+            food_scores.get(
+                canonical_key,
+                0.0
+            )
+            + float(prob)
+        )
 
     if not food_scores:
-        return ("unknown", "Unknown Food", "Food", 0.0)
+        return (
+            "unknown",
+            "Unknown Food",
+            "Food",
+            0.0
+        )
 
-    best_key, best_score = max(food_scores.items(), key=lambda x: x[1])
-    meta = classes_meta.get(best_key, {})
-    display_name = meta.get("display_name", best_key.replace("_", " ").title())
-    category = meta.get("category", "Produce")
+    best_key, best_score = max(
+        food_scores.items(),
+        key=lambda x: x[1]
+    )
 
-    logger.info(f"[CLASSIFIER] Crop classified -> {display_name} ({best_score:.4f})")
-    return (best_key, display_name, category, float(best_score))
+    meta = classes_meta.get(
+        best_key,
+        {}
+    )
+
+    display_name = meta.get(
+        "display_name",
+        best_key.replace(
+            "_",
+            " "
+        ).title()
+    )
+
+    category = meta.get(
+        "category",
+        "Produce"
+    )
+
+    logger.info(
+        f"[CLASSIFIER] Crop classified -> "
+        f"{display_name} ({best_score:.4f})"
+    )
+
+    return (
+        best_key,
+        display_name,
+        category,
+        float(best_score)
+    )
 
 
 def evaluate_freshness_for_item(
@@ -445,7 +494,10 @@ def evaluate_freshness_for_item(
     item_key: Optional[str] = None
 ) -> Dict[str, Any]:
 
-    if cropped_image_bgr is None or cropped_image_bgr.size == 0:
+    if (
+        cropped_image_bgr is None
+        or cropped_image_bgr.size == 0
+    ):
         return {
             "item_key": "unknown",
             "item": "Unknown",
@@ -456,10 +508,17 @@ def evaluate_freshness_for_item(
             "is_confident": False
         }
 
-    probs = run_freshness_inference(cropped_image_bgr)
+    probs = run_freshness_inference(
+        cropped_image_bgr
+    )
+
     class_indices = get_legacy_class_indices()
     class_names = get_legacy_class_names()
-    classes_meta = get_classes_metadata().get("classes", {})
+
+    classes_meta = get_classes_metadata().get(
+        "classes",
+        {}
+    )
 
     if probs.size == 0:
         return {
@@ -472,25 +531,75 @@ def evaluate_freshness_for_item(
             "is_confident": False
         }
 
-    # If food identity not provided, classify food first using learned model
-    if not item_key or item_key == "unknown":
-        item_key, _, _, _ = classify_food_crop(cropped_image_bgr)
+    if (
+        not item_key
+        or item_key == "unknown"
+    ):
 
-    if item_key and item_key in classes_meta:
-        meta = classes_meta[item_key]
+        food_scores: Dict[str, float] = {}
 
-        if not meta.get("freshness_supported", False):
+        for idx, prob in enumerate(
+            probs[:len(class_names)]
+        ):
+
+            label = class_names[
+                idx
+            ].lower().strip()
+
+            canonical_key, _, _ = parse_class_label(
+                label
+            )
+
+            food_scores[
+                canonical_key
+            ] = (
+                food_scores.get(
+                    canonical_key,
+                    0.0
+                )
+                + float(prob)
+            )
+
+        if food_scores:
+
+            item_key = max(
+                food_scores.items(),
+                key=lambda x: x[1]
+            )[0]
+
+        else:
+            item_key = "unknown"
+
+    if item_key in classes_meta:
+
+        meta = classes_meta[
+            item_key
+        ]
+
+        if not meta.get(
+            "freshness_supported",
+            False
+        ):
             return {
                 "item_key": item_key,
-                "item": meta.get("display_name", item_key),
-                "category": meta.get("category", "Produce"),
+                "item": meta.get(
+                    "display_name",
+                    item_key
+                ),
+                "category": meta.get(
+                    "category",
+                    "Produce"
+                ),
                 "freshness": None,
                 "freshness_status": "Not Available",
                 "freshness_confidence": 0.0,
                 "is_confident": True
             }
 
-        fresh_idx, spoiled_idx = _find_pair_indices(item_key, class_indices)
+        fresh_idx, spoiled_idx = _find_pair_indices(
+            item_key,
+            class_indices
+        )
 
         if (
             fresh_idx is not None
@@ -498,41 +607,94 @@ def evaluate_freshness_for_item(
             and fresh_idx < len(probs)
             and spoiled_idx < len(probs)
         ):
-            p_fresh = float(probs[fresh_idx])
-            p_spoiled = float(probs[spoiled_idx])
-            total = p_fresh + p_spoiled
+
+            p_fresh = float(
+                probs[fresh_idx]
+            )
+
+            p_spoiled = float(
+                probs[spoiled_idx]
+            )
+
+            total = (
+                p_fresh
+                + p_spoiled
+            )
 
             if total > 1e-6:
-                norm_fresh = p_fresh / total
-                norm_spoiled = p_spoiled / total
+
+                norm_fresh = (
+                    p_fresh
+                    / total
+                )
+
+                norm_spoiled = (
+                    p_spoiled
+                    / total
+                )
+
             else:
+
                 norm_fresh = 0.5
                 norm_spoiled = 0.5
 
-            condition = "Fresh" if p_fresh >= p_spoiled else "Spoiled"
-            confidence = max(norm_fresh, norm_spoiled)
+            condition = (
+                "Fresh"
+                if p_fresh >= p_spoiled
+                else "Spoiled"
+            )
+
+            confidence = max(
+                norm_fresh,
+                norm_spoiled
+            )
 
             stability_warning = ""
-            if abs(norm_fresh - norm_spoiled) < 0.12:
-                stability_warning = "Borderline freshness prediction. Inspect closely before use."
+
+            if abs(
+                norm_fresh
+                - norm_spoiled
+            ) < 0.12:
+
+                stability_warning = (
+                    "Borderline freshness prediction. "
+                    "Inspect closely before use."
+                )
 
             logger.info(
-                f"[FRESHNESS] {meta.get('display_name', item_key)} -> "
+                f"[FRESHNESS] "
+                f"{meta.get('display_name', item_key)} -> "
                 f"{condition} ({confidence:.4f})"
             )
 
             return {
                 "item_key": item_key,
-                "item": meta.get("display_name", item_key),
-                "category": meta.get("category", "Produce"),
+                "item": meta.get(
+                    "display_name",
+                    item_key
+                ),
+                "category": meta.get(
+                    "category",
+                    "Produce"
+                ),
                 "freshness": condition,
                 "freshness_status": condition,
-                "freshness_confidence": round(confidence, 4),
+                "freshness_confidence": round(
+                    confidence,
+                    4
+                ),
                 "stability_warning": stability_warning,
-                "is_confident": bool(confidence >= FRESHNESS_CONFIDENCE_THRESHOLD)
+                "is_confident": bool(
+                    confidence
+                    >= FRESHNESS_CONFIDENCE_THRESHOLD
+                )
             }
 
-    valid_count = min(len(probs), len(class_names))
+    valid_count = min(
+        len(probs),
+        len(class_names)
+    )
+
     if valid_count == 0:
         return {
             "item_key": "unknown",
@@ -544,13 +706,33 @@ def evaluate_freshness_for_item(
             "is_confident": False
         }
 
-    ranked_indices = np.argsort(probs[:valid_count])[::-1]
-    best_idx = int(ranked_indices[0])
-    best_prob = float(probs[best_idx])
-    best_label = class_names[best_idx]
+    ranked_indices = np.argsort(
+        probs[:valid_count]
+    )[::-1]
 
-    canonical_key, display_name, condition = parse_class_label(best_label)
-    category = classes_meta.get(canonical_key, {}).get("category", "Produce")
+    best_idx = int(
+        ranked_indices[0]
+    )
+
+    best_prob = float(
+        probs[best_idx]
+    )
+
+    best_label = class_names[
+        best_idx
+    ]
+
+    canonical_key, display_name, condition = parse_class_label(
+        best_label
+    )
+
+    category = classes_meta.get(
+        canonical_key,
+        {}
+    ).get(
+        "category",
+        "Produce"
+    )
 
     return {
         "item_key": canonical_key,
@@ -558,7 +740,13 @@ def evaluate_freshness_for_item(
         "category": category,
         "freshness": condition,
         "freshness_status": condition,
-        "freshness_confidence": round(best_prob, 4),
+        "freshness_confidence": round(
+            best_prob,
+            4
+        ),
         "stability_warning": "",
-        "is_confident": bool(best_prob >= FOOD_CONFIDENCE_THRESHOLD)
+        "is_confident": bool(
+            best_prob
+            >= FOOD_CONFIDENCE_THRESHOLD
+        )
     }
