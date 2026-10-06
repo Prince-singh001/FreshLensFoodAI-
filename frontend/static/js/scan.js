@@ -75,6 +75,7 @@ document.addEventListener("DOMContentLoaded", () => {
   let isAnalyzing = false;
   let isCameraStarting = false;
   let currentActiveMode = "upload";
+  let activeRequestController = null;
 
   function escapeHtml(value) {
     return String(value ?? "")
@@ -101,9 +102,18 @@ document.addEventListener("DOMContentLoaded", () => {
         modeLiveBtn.setAttribute("aria-selected", "false");
       }
 
-      if (uploadModePanel) uploadModePanel.style.display = "block";
-      if (liveModePanel) liveModePanel.style.display = "none";
-      if (modeIndicatorBadge) modeIndicatorBadge.textContent = "Upload Mode";
+      if (uploadModePanel) {
+        uploadModePanel.style.display = "block";
+      }
+
+      if (liveModePanel) {
+        liveModePanel.style.display = "none";
+      }
+
+      if (modeIndicatorBadge) {
+        modeIndicatorBadge.textContent = "Upload Mode";
+      }
+
       return;
     }
 
@@ -118,25 +128,38 @@ document.addEventListener("DOMContentLoaded", () => {
         modeUploadBtn.setAttribute("aria-selected", "false");
       }
 
-      if (uploadModePanel) uploadModePanel.style.display = "none";
-      if (liveModePanel) liveModePanel.style.display = "block";
-      if (modeIndicatorBadge)
+      if (uploadModePanel) {
+        uploadModePanel.style.display = "none";
+      }
+
+      if (liveModePanel) {
+        liveModePanel.style.display = "block";
+      }
+
+      if (modeIndicatorBadge) {
         modeIndicatorBadge.textContent = "Live Camera Mode";
+      }
 
       startCamera();
     }
   }
 
   if (modeUploadBtn) {
-    modeUploadBtn.addEventListener("click", () => switchMode("upload"));
+    modeUploadBtn.addEventListener("click", () => {
+      switchMode("upload");
+    });
   }
 
   if (modeLiveBtn) {
-    modeLiveBtn.addEventListener("click", () => switchMode("live"));
+    modeLiveBtn.addEventListener("click", () => {
+      switchMode("live");
+    });
   }
 
   if (fallbackUploadBtn) {
-    fallbackUploadBtn.addEventListener("click", () => switchMode("upload"));
+    fallbackUploadBtn.addEventListener("click", () => {
+      switchMode("upload");
+    });
   }
 
   tabButtons.forEach((btn) => {
@@ -145,6 +168,7 @@ document.addEventListener("DOMContentLoaded", () => {
       btn.classList.add("active");
 
       const type = btn.getAttribute("data-type");
+
       activeCategory =
         type === "all"
           ? "All"
@@ -191,7 +215,10 @@ document.addEventListener("DOMContentLoaded", () => {
     const env = checkEnvironmentSecurity();
 
     if (env.hasMediaDevices) {
-      return { supported: true, env };
+      return {
+        supported: true,
+        env,
+      };
     }
 
     if (!env.isLocalhost && !env.isSecureContext) {
@@ -289,33 +316,60 @@ document.addEventListener("DOMContentLoaded", () => {
   function showCameraError(title, message, icon = "📷") {
     stopCamera();
 
-    if (cameraArea) cameraArea.style.display = "none";
+    if (cameraArea) {
+      cameraArea.style.display = "none";
+    }
 
     if (cameraErrorState) {
       cameraErrorState.style.display = "block";
-      if (cameraErrorTitle) cameraErrorTitle.textContent = title;
-      if (cameraErrorMessage) cameraErrorMessage.textContent = message;
-      if (cameraErrorIcon) cameraErrorIcon.textContent = icon;
+
+      if (cameraErrorTitle) {
+        cameraErrorTitle.textContent = title;
+      }
+
+      if (cameraErrorMessage) {
+        cameraErrorMessage.textContent = message;
+      }
+
+      if (cameraErrorIcon) {
+        cameraErrorIcon.textContent = icon;
+      }
     }
 
-    if (cameraStatusPill) cameraStatusPill.textContent = title;
-    if (captureImage) captureImage.disabled = true;
-    if (switchCameraBtn) switchCameraBtn.disabled = false;
+    if (cameraStatusPill) {
+      cameraStatusPill.textContent = title;
+    }
+
+    if (captureImage) {
+      captureImage.disabled = true;
+    }
+
+    if (switchCameraBtn) {
+      switchCameraBtn.disabled = false;
+    }
   }
 
   async function requestCameraStream(facingMode) {
     const attempts = [
       {
         video: {
-          facingMode: { ideal: facingMode },
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
+          facingMode: {
+            ideal: facingMode,
+          },
+          width: {
+            ideal: 1280,
+          },
+          height: {
+            ideal: 720,
+          },
         },
         audio: false,
       },
       {
         video: {
-          facingMode: { ideal: facingMode },
+          facingMode: {
+            ideal: facingMode,
+          },
         },
         audio: false,
       },
@@ -349,7 +403,9 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   async function startCamera() {
-    if (isCameraStarting || localStream) return;
+    if (isCameraStarting || localStream) {
+      return;
+    }
 
     isCameraStarting = true;
 
@@ -357,21 +413,36 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (!support.supported) {
       showCameraError(support.title, support.message, support.icon);
+
       isCameraStarting = false;
       return;
     }
 
     stopCamera();
 
-    if (cameraErrorState) cameraErrorState.style.display = "none";
-    if (cameraArea) cameraArea.style.display = "block";
-    if (cameraStatusPill)
+    if (cameraErrorState) {
+      cameraErrorState.style.display = "none";
+    }
+
+    if (cameraArea) {
+      cameraArea.style.display = "block";
+    }
+
+    if (cameraStatusPill) {
       cameraStatusPill.textContent = "Initializing Camera...";
-    if (captureImage) captureImage.disabled = true;
-    if (switchCameraBtn) switchCameraBtn.disabled = true;
+    }
+
+    if (captureImage) {
+      captureImage.disabled = true;
+    }
+
+    if (switchCameraBtn) {
+      switchCameraBtn.disabled = true;
+    }
 
     try {
       const stream = await requestCameraStream(currentFacingMode);
+
       localStream = stream;
 
       if (webcam) {
@@ -388,6 +459,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
             webcam.onloadedmetadata = () => {
               clearTimeout(timer);
+
               webcam
                 .play()
                 .catch(() => {})
@@ -409,13 +481,20 @@ document.addEventListener("DOMContentLoaded", () => {
         };
       }
 
-      if (cameraStatusPill)
+      if (cameraStatusPill) {
         cameraStatusPill.textContent = "Camera Ready - Place food inside frame";
+      }
 
-      if (captureImage) captureImage.disabled = false;
-      if (switchCameraBtn) switchCameraBtn.disabled = false;
+      if (captureImage) {
+        captureImage.disabled = false;
+      }
+
+      if (switchCameraBtn) {
+        switchCameraBtn.disabled = false;
+      }
     } catch (err) {
       const errorInfo = parseCameraError(err);
+
       showCameraError(errorInfo.title, errorInfo.message, errorInfo.icon);
     } finally {
       isCameraStarting = false;
@@ -425,7 +504,9 @@ document.addEventListener("DOMContentLoaded", () => {
   function stopCamera() {
     if (localStream) {
       try {
-        localStream.getTracks().forEach((track) => track.stop());
+        localStream.getTracks().forEach((track) => {
+          track.stop();
+        });
       } catch (err) {
         console.warn("Camera stop error:", err);
       }
@@ -441,12 +522,16 @@ document.addEventListener("DOMContentLoaded", () => {
       webcam.srcObject = null;
     }
 
-    if (captureImage) captureImage.disabled = true;
+    if (captureImage) {
+      captureImage.disabled = true;
+    }
   }
 
   if (switchCameraBtn) {
     switchCameraBtn.addEventListener("click", async () => {
-      if (isCameraStarting) return;
+      if (isCameraStarting) {
+        return;
+      }
 
       currentFacingMode =
         currentFacingMode === "environment" ? "user" : "environment";
@@ -469,20 +554,26 @@ document.addEventListener("DOMContentLoaded", () => {
 
   if (captureImage) {
     captureImage.addEventListener("click", () => {
-      if (!localStream || !webcam || isAnalyzing) return;
+      if (!localStream || !webcam || isAnalyzing) {
+        return;
+      }
 
       const width = webcam.videoWidth || 640;
+
       const height = webcam.videoHeight || 480;
 
       if (!width || !height) {
-        if (cameraStatusPill)
+        if (cameraStatusPill) {
           cameraStatusPill.textContent = "Camera is not ready yet";
+        }
+
         return;
       }
 
       captureImage.disabled = true;
 
       const canvas = document.createElement("canvas");
+
       canvas.width = width;
       canvas.height = height;
 
@@ -509,15 +600,21 @@ document.addEventListener("DOMContentLoaded", () => {
           });
 
           const dt = new DataTransfer();
+
           dt.items.add(file);
 
-          if (foodImage) foodImage.files = dt.files;
+          if (foodImage) {
+            foodImage.files = dt.files;
+          }
 
           const previewUrl = canvas.toDataURL("image/jpeg", 0.92);
 
           stopCamera();
+
           switchMode("upload");
+
           displayImagePreview(previewUrl, file);
+
           await executeFoodAnalysis(file);
         },
         "image/jpeg",
@@ -531,6 +628,7 @@ document.addEventListener("DOMContentLoaded", () => {
       uploadArea.addEventListener(eventName, (event) => {
         event.preventDefault();
         event.stopPropagation();
+
         uploadArea.classList.add("drag-over");
       });
     });
@@ -539,6 +637,7 @@ document.addEventListener("DOMContentLoaded", () => {
       uploadArea.addEventListener(eventName, (event) => {
         event.preventDefault();
         event.stopPropagation();
+
         uploadArea.classList.remove("drag-over");
       });
     });
@@ -547,7 +646,10 @@ document.addEventListener("DOMContentLoaded", () => {
       const files = event.dataTransfer?.files;
 
       if (files?.length) {
-        if (foodImage) foodImage.files = files;
+        if (foodImage) {
+          foodImage.files = files;
+        }
+
         handleFileSelected(files[0]);
       }
     });
@@ -564,17 +666,21 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function handleFileSelected(file) {
-    if (!file) return;
+    if (!file) {
+      return;
+    }
 
     const validTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
 
     if (!validTypes.includes(file.type.toLowerCase())) {
       showQualityToast("Unsupported format. Please upload JPG, PNG, or WEBP.");
+
       return;
     }
 
     if (file.size > 16 * 1024 * 1024) {
       showQualityToast("Image file exceeds the 16MB limit.");
+
       return;
     }
 
@@ -584,6 +690,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     reader.onload = (event) => {
       displayImagePreview(event.target.result, file);
+
       runPreflightQualityCheck(event.target.result);
     };
 
@@ -621,21 +728,27 @@ document.addEventListener("DOMContentLoaded", () => {
 
   if (removeImageBtn) {
     removeImageBtn.addEventListener("click", () => {
-      if (foodImage) foodImage.value = "";
+      if (foodImage) {
+        foodImage.value = "";
+      }
 
       if (previewBox) {
         previewBox.innerHTML = `
-          <span class="upload-icon">📷</span>
-          <h3 style="font-size:1.1rem; margin-bottom:4px;">Drop your food image here</h3>
-          <p style="color:var(--muted); font-size:0.85rem;">
-            or choose an image from your device (JPG, PNG, WEBP)
-          </p>
-        `;
+            <span class="upload-icon">📷</span>
+            <h3 style="font-size:1.1rem; margin-bottom:4px;">Drop your food image here</h3>
+            <p style="color:var(--muted); font-size:0.85rem;">
+              or choose an image from your device (JPG, PNG, WEBP)
+            </p>
+          `;
       }
 
-      if (previewActionsBar) previewActionsBar.style.display = "none";
+      if (previewActionsBar) {
+        previewActionsBar.style.display = "none";
+      }
 
-      if (qualityToast) qualityToast.style.display = "none";
+      if (qualityToast) {
+        qualityToast.style.display = "none";
+      }
 
       resetResultsView();
     });
@@ -649,17 +762,21 @@ document.addEventListener("DOMContentLoaded", () => {
         showQualityToast(
           "The image resolution is very small. For best detection, use a clearer photo.",
         );
+
         return;
       }
 
       try {
         const canvas = document.createElement("canvas");
+
         canvas.width = 40;
         canvas.height = 40;
 
         const ctx = canvas.getContext("2d");
 
-        if (!ctx) return;
+        if (!ctx) {
+          return;
+        }
 
         ctx.drawImage(img, 0, 0, 40, 40);
 
@@ -687,9 +804,13 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function showQualityToast(message) {
-    if (qualityToastMessage) qualityToastMessage.textContent = message;
+    if (qualityToastMessage) {
+      qualityToastMessage.textContent = message;
+    }
 
-    if (qualityToast) qualityToast.style.display = "flex";
+    if (qualityToast) {
+      qualityToast.style.display = "flex";
+    }
   }
 
   sampleButtons.forEach((btn) => {
@@ -701,6 +822,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
       if (!imageUrl) {
         showQualityToast("Sample image is unavailable.");
+
         return;
       }
 
@@ -716,22 +838,29 @@ document.addEventListener("DOMContentLoaded", () => {
         const file = new File(
           [blob],
           imageUrl.split("/").pop() || "sample.jpg",
-          { type: blob.type || "image/jpeg" },
+          {
+            type: blob.type || "image/jpeg",
+          },
         );
 
         const dt = new DataTransfer();
+
         dt.items.add(file);
 
-        if (foodImage) foodImage.files = dt.files;
+        if (foodImage) {
+          foodImage.files = dt.files;
+        }
 
         const previewUrl = URL.createObjectURL(blob);
+
         displayImagePreview(previewUrl, file);
 
-        URL.revokeObjectURL(previewUrl);
-
         await executeFoodAnalysis(file);
+
+        URL.revokeObjectURL(previewUrl);
       } catch (error) {
         console.error("Sample image error:", error);
+
         showQualityToast(
           "Unable to load the sample image. Please upload an image manually.",
         );
@@ -740,17 +869,45 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   function resetResultsView() {
-    if (scanErrorBox) scanErrorBox.style.display = "none";
-    if (categoryWarningBox) categoryWarningBox.style.display = "none";
-    if (annotatedImageBox) annotatedImageBox.style.display = "none";
-    if (resultSummaryBar) resultSummaryBar.style.display = "none";
-    if (viewAnalysisPrompt) viewAnalysisPrompt.style.display = "none";
-    if (afterScanActions) afterScanActions.style.display = "none";
-    if (feedbackSection) feedbackSection.style.display = "none";
-    if (correctionForm) correctionForm.style.display = "none";
-    if (feedbackResultMsg) feedbackResultMsg.style.display = "none";
+    if (scanErrorBox) {
+      scanErrorBox.style.display = "none";
+    }
 
-    if (scanInferenceTime) scanInferenceTime.textContent = "";
+    if (categoryWarningBox) {
+      categoryWarningBox.style.display = "none";
+    }
+
+    if (annotatedImageBox) {
+      annotatedImageBox.style.display = "none";
+    }
+
+    if (resultSummaryBar) {
+      resultSummaryBar.style.display = "none";
+    }
+
+    if (viewAnalysisPrompt) {
+      viewAnalysisPrompt.style.display = "none";
+    }
+
+    if (afterScanActions) {
+      afterScanActions.style.display = "none";
+    }
+
+    if (feedbackSection) {
+      feedbackSection.style.display = "none";
+    }
+
+    if (correctionForm) {
+      correctionForm.style.display = "none";
+    }
+
+    if (feedbackResultMsg) {
+      feedbackResultMsg.style.display = "none";
+    }
+
+    if (scanInferenceTime) {
+      scanInferenceTime.textContent = "";
+    }
 
     if (multiObjectsContainer) {
       multiObjectsContainer.innerHTML = `
@@ -770,7 +927,9 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function resetUploadUI() {
-    if (foodImage) foodImage.value = "";
+    if (foodImage) {
+      foodImage.value = "";
+    }
 
     if (previewBox) {
       previewBox.innerHTML = `
@@ -784,13 +943,23 @@ document.addEventListener("DOMContentLoaded", () => {
       `;
     }
 
-    if (previewActionsBar) previewActionsBar.style.display = "none";
+    if (previewActionsBar) {
+      previewActionsBar.style.display = "none";
+    }
 
-    if (qualityToast) qualityToast.style.display = "none";
+    if (qualityToast) {
+      qualityToast.style.display = "none";
+    }
   }
 
   if (resetScan) {
     resetScan.addEventListener("click", () => {
+      if (activeRequestController) {
+        try {
+          activeRequestController.abort();
+        } catch (_) {}
+      }
+
       stopCamera();
       resetUploadUI();
       switchMode("upload");
@@ -802,6 +971,7 @@ document.addEventListener("DOMContentLoaded", () => {
     scanAnotherBtn.addEventListener("click", () => {
       resetUploadUI();
       resetResultsView();
+
       window.scrollTo({
         top: 0,
         behavior: "smooth",
@@ -809,11 +979,130 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+  async function optimizeImageForUpload(file) {
+    if (!file || !file.type.startsWith("image/")) {
+      return file;
+    }
+
+    const MAX_SIZE = 1600;
+    const QUALITY = 0.82;
+    const MAX_DIRECT_SIZE = 2 * 1024 * 1024;
+
+    if (file.size <= MAX_DIRECT_SIZE) {
+      return file;
+    }
+
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+
+      reader.onload = (event) => {
+        const img = new Image();
+
+        img.onload = () => {
+          let width = img.width;
+
+          let height = img.height;
+
+          if (width <= MAX_SIZE && height <= MAX_SIZE) {
+            const canvas = document.createElement("canvas");
+
+            canvas.width = width;
+
+            canvas.height = height;
+
+            const ctx = canvas.getContext("2d");
+
+            if (!ctx) {
+              resolve(file);
+              return;
+            }
+
+            ctx.drawImage(img, 0, 0, width, height);
+
+            canvas.toBlob(
+              (blob) => {
+                if (!blob) {
+                  resolve(file);
+                  return;
+                }
+
+                resolve(
+                  new File([blob], "freshlens_scan.jpg", {
+                    type: "image/jpeg",
+                    lastModified: Date.now(),
+                  }),
+                );
+              },
+              "image/jpeg",
+              QUALITY,
+            );
+
+            return;
+          }
+
+          const scale = Math.min(MAX_SIZE / width, MAX_SIZE / height, 1);
+
+          width = Math.round(width * scale);
+
+          height = Math.round(height * scale);
+
+          const canvas = document.createElement("canvas");
+
+          canvas.width = width;
+
+          canvas.height = height;
+
+          const ctx = canvas.getContext("2d");
+
+          if (!ctx) {
+            resolve(file);
+            return;
+          }
+
+          ctx.drawImage(img, 0, 0, width, height);
+
+          canvas.toBlob(
+            (blob) => {
+              if (!blob) {
+                resolve(file);
+                return;
+              }
+
+              resolve(
+                new File([blob], "freshlens_scan.jpg", {
+                  type: "image/jpeg",
+                  lastModified: Date.now(),
+                }),
+              );
+            },
+            "image/jpeg",
+            QUALITY,
+          );
+        };
+
+        img.onerror = () => {
+          resolve(file);
+        };
+
+        img.src = event.target.result;
+      };
+
+      reader.onerror = () => {
+        resolve(file);
+      };
+
+      reader.readAsDataURL(file);
+    });
+  }
+
   async function executeFoodAnalysis(file) {
-    if (isAnalyzing) return;
+    if (isAnalyzing) {
+      return;
+    }
 
     if (!file) {
       alert("Please select or capture a food image first.");
+
       return;
     }
 
@@ -825,6 +1114,7 @@ document.addEventListener("DOMContentLoaded", () => {
           message: "Please select a valid image file.",
         },
       });
+
       return;
     }
 
@@ -837,58 +1127,168 @@ document.addEventListener("DOMContentLoaded", () => {
       scanNow.innerHTML = "<span>⏳ Analyzing...</span>";
     }
 
-    if (captureImage) captureImage.disabled = true;
+    if (captureImage) {
+      captureImage.disabled = true;
+    }
 
-    if (progressOverlay) progressOverlay.style.display = "flex";
+    if (progressOverlay) {
+      progressOverlay.style.display = "flex";
+    }
 
-    if (progressBarInner) progressBarInner.style.width = "20%";
+    if (progressBarInner) {
+      progressBarInner.style.width = "10%";
+    }
 
-    if (progressStepText)
+    if (progressStepText) {
       progressStepText.textContent = "Preparing image for AI analysis...";
-
-    const formData = new FormData();
-
-    formData.append("file", file, file.name || "food.jpg");
-    formData.append("selected_category", activeCategory);
+    }
 
     let step1Timer = null;
     let step2Timer = null;
+    let step3Timer = null;
+    let timeoutId = null;
 
     try {
-      step1Timer = setTimeout(() => {
-        if (progressBarInner) progressBarInner.style.width = "50%";
+      if (progressBarInner) {
+        progressBarInner.style.width = "20%";
+      }
 
-        if (progressStepText)
-          progressStepText.textContent = "Detecting food item...";
-      }, 500);
+      if (progressStepText) {
+        progressStepText.textContent = "Optimizing image...";
+      }
 
-      step2Timer = setTimeout(() => {
-        if (progressBarInner) progressBarInner.style.width = "75%";
+      const originalSize = file.size;
 
-        if (progressStepText)
-          progressStepText.textContent = "Evaluating freshness & condition...";
-      }, 1500);
+      const optimizedFile = await optimizeImageForUpload(file);
 
-      const response = await fetch("/api/v1/predict", {
-        method: "POST",
-        body: formData,
-        headers: {
-          Accept: "application/json",
-        },
-        credentials: "same-origin",
+      console.log("FreshLens image upload:", {
+        originalName: file.name,
+        originalSizeKB: Math.round(originalSize / 1024),
+        optimizedName: optimizedFile.name,
+        optimizedSizeKB: Math.round(optimizedFile.size / 1024),
       });
 
-      if (step1Timer) clearTimeout(step1Timer);
-      if (step2Timer) clearTimeout(step2Timer);
+      if (progressBarInner) {
+        progressBarInner.style.width = "35%";
+      }
 
-      if (progressBarInner) progressBarInner.style.width = "90%";
+      if (progressStepText) {
+        progressStepText.textContent = "Sending image to FreshLens AI...";
+      }
+
+      const formData = new FormData();
+
+      formData.append(
+        "file",
+        optimizedFile,
+        optimizedFile.name || "freshlens_scan.jpg",
+      );
+
+      formData.append("selected_category", activeCategory || "All");
+
+      step1Timer = setTimeout(() => {
+        if (progressBarInner) {
+          progressBarInner.style.width = "50%";
+        }
+
+        if (progressStepText) {
+          progressStepText.textContent = "Detecting food item...";
+        }
+      }, 1500);
+
+      step2Timer = setTimeout(() => {
+        if (progressBarInner) {
+          progressBarInner.style.width = "70%";
+        }
+
+        if (progressStepText) {
+          progressStepText.textContent = "Running AI freshness analysis...";
+        }
+      }, 5000);
+
+      step3Timer = setTimeout(() => {
+        if (progressBarInner) {
+          progressBarInner.style.width = "82%";
+        }
+
+        if (progressStepText) {
+          progressStepText.textContent = "AI model is processing the image...";
+        }
+      }, 15000);
+
+      activeRequestController = new AbortController();
+
+      const REQUEST_TIMEOUT = 90000;
+
+      timeoutId = setTimeout(() => {
+        if (activeRequestController) {
+          activeRequestController.abort();
+        }
+      }, REQUEST_TIMEOUT);
+
+      let response;
+
+      try {
+        response = await fetch("/api/v1/predict", {
+          method: "POST",
+          body: formData,
+          headers: {
+            Accept: "application/json",
+          },
+          credentials: "same-origin",
+          cache: "no-store",
+          signal: activeRequestController.signal,
+        });
+      } finally {
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+
+          timeoutId = null;
+        }
+
+        activeRequestController = null;
+      }
+
+      if (step1Timer) {
+        clearTimeout(step1Timer);
+
+        step1Timer = null;
+      }
+
+      if (step2Timer) {
+        clearTimeout(step2Timer);
+
+        step2Timer = null;
+      }
+
+      if (step3Timer) {
+        clearTimeout(step3Timer);
+
+        step3Timer = null;
+      }
+
+      if (progressBarInner) {
+        progressBarInner.style.width = "90%";
+      }
 
       let data = null;
 
       const contentType = response.headers.get("content-type") || "";
 
       if (contentType.includes("application/json")) {
-        data = await response.json();
+        try {
+          data = await response.json();
+        } catch (jsonError) {
+          console.error("FreshLens JSON parse error:", jsonError);
+
+          data = {
+            success: false,
+            error: {
+              code: `HTTP_${response.status}`,
+              message: "The server returned an invalid response.",
+            },
+          };
+        }
       } else {
         const text = await response.text();
 
@@ -901,21 +1301,78 @@ document.addEventListener("DOMContentLoaded", () => {
         };
       }
 
-      if (progressBarInner) progressBarInner.style.width = "100%";
-
-      if (progressStepText) progressStepText.textContent = "Analysis complete.";
-
-      await new Promise((resolve) => setTimeout(resolve, 200));
-
-      if (progressOverlay) progressOverlay.style.display = "none";
-
       console.log("FreshLens API response:", {
         status: response.status,
         ok: response.ok,
         data,
       });
 
+      if (response.status === 504) {
+        if (progressStepText) {
+          progressStepText.textContent = "Server took too long to respond.";
+        }
+
+        if (progressBarInner) {
+          progressBarInner.style.width = "100%";
+        }
+
+        await new Promise((resolve) => setTimeout(resolve, 300));
+
+        if (progressOverlay) {
+          progressOverlay.style.display = "none";
+        }
+
+        handleScanError({
+          status: "prediction_timeout",
+          error: {
+            code: "PREDICTION_TIMEOUT",
+            message:
+              "Food analysis took too long on the server. Please try again with a clear food image.",
+          },
+        });
+
+        return;
+      }
+
+      if (response.status === 502) {
+        if (progressOverlay) {
+          progressOverlay.style.display = "none";
+        }
+
+        handleScanError({
+          status: "prediction_unavailable",
+          error: {
+            code: "PREDICTION_UNAVAILABLE",
+            message:
+              "The FreshLens AI server is temporarily unavailable. Please wait a few seconds and try again.",
+          },
+        });
+
+        return;
+      }
+
+      if (response.status === 503) {
+        if (progressOverlay) {
+          progressOverlay.style.display = "none";
+        }
+
+        handleScanError({
+          status: "prediction_unavailable",
+          error: {
+            code: "PREDICTION_UNAVAILABLE",
+            message:
+              "The AI service is starting up. Please wait a few seconds and try again.",
+          },
+        });
+
+        return;
+      }
+
       if (!response.ok || data?.success === false) {
+        if (progressOverlay) {
+          progressOverlay.style.display = "none";
+        }
+
         handleScanError(
           data || {
             error: {
@@ -924,7 +1381,22 @@ document.addEventListener("DOMContentLoaded", () => {
             },
           },
         );
+
         return;
+      }
+
+      if (progressBarInner) {
+        progressBarInner.style.width = "100%";
+      }
+
+      if (progressStepText) {
+        progressStepText.textContent = "Analysis complete.";
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, 250));
+
+      if (progressOverlay) {
+        progressOverlay.style.display = "none";
       }
 
       renderScanSuccess(data);
@@ -939,36 +1411,60 @@ document.addEventListener("DOMContentLoaded", () => {
         }, 2000);
       }
     } catch (error) {
-      if (step1Timer) clearTimeout(step1Timer);
-      if (step2Timer) clearTimeout(step2Timer);
+      if (step1Timer) {
+        clearTimeout(step1Timer);
+      }
+
+      if (step2Timer) {
+        clearTimeout(step2Timer);
+      }
+
+      if (step3Timer) {
+        clearTimeout(step3Timer);
+      }
+
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+
+      activeRequestController = null;
 
       console.error("FreshLens prediction request failed:", error);
 
-      if (progressOverlay) progressOverlay.style.display = "none";
+      if (progressOverlay) {
+        progressOverlay.style.display = "none";
+      }
 
-      handleScanError({
-        status: "network_error",
-        error: {
-          code: "NETWORK_ERROR",
-          message:
-            "Unable to connect to the FreshLens AI prediction service. Please try again.",
-        },
-      });
+      if (error?.name === "AbortError") {
+        handleScanError({
+          status: "prediction_timeout",
+          error: {
+            code: "PREDICTION_TIMEOUT",
+            message:
+              "The AI analysis is taking too long. Please try again with a smaller or clearer food image.",
+          },
+        });
+      } else {
+        handleScanError({
+          status: "network_error",
+          error: {
+            code: "NETWORK_ERROR",
+            message:
+              "Unable to connect to the FreshLens AI prediction service. Please try again.",
+          },
+        });
+      }
     } finally {
       isAnalyzing = false;
 
       if (scanNow) {
         scanNow.disabled = false;
-
-        if (
-          scanNow.innerText.includes("Analyzing") ||
-          scanNow.innerText.includes("Analysis Complete")
-        ) {
-          scanNow.innerHTML = "<span>🔍 Analyze Food</span>";
-        }
+        scanNow.innerHTML = "<span>🔍 Analyze Food</span>";
       }
 
-      if (captureImage) captureImage.disabled = false;
+      if (captureImage) {
+        captureImage.disabled = false;
+      }
     }
   }
 
@@ -976,12 +1472,15 @@ document.addEventListener("DOMContentLoaded", () => {
     scanNow.addEventListener("click", async (event) => {
       event.preventDefault();
 
-      if (isAnalyzing) return;
+      if (isAnalyzing) {
+        return;
+      }
 
       const file = foodImage?.files?.[0];
 
       if (!file) {
         alert("Please select or capture a food image first.");
+
         return;
       }
 
@@ -991,161 +1490,202 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function handleScanError(data = {}) {
     const status = data.status || "";
+
     const err = data.error || {
       code: "SCAN_FAILED",
       message: data.message || "Scan could not be completed.",
     };
 
-    if (annotatedImageBox) annotatedImageBox.style.display = "none";
+    if (annotatedImageBox) {
+      annotatedImageBox.style.display = "none";
+    }
 
-    if (resultSummaryBar) resultSummaryBar.style.display = "none";
+    if (resultSummaryBar) {
+      resultSummaryBar.style.display = "none";
+    }
 
-    if (viewAnalysisPrompt) viewAnalysisPrompt.style.display = "none";
+    if (viewAnalysisPrompt) {
+      viewAnalysisPrompt.style.display = "none";
+    }
 
-    if (categoryWarningBox) categoryWarningBox.style.display = "none";
+    if (categoryWarningBox) {
+      categoryWarningBox.style.display = "none";
+    }
 
-    if (afterScanActions) afterScanActions.style.display = "none";
+    if (afterScanActions) {
+      afterScanActions.style.display = "none";
+    }
 
-    if (feedbackSection) feedbackSection.style.display = "none";
+    if (feedbackSection) {
+      feedbackSection.style.display = "none";
+    }
 
-    const noFood =
-      status === "no_food" ||
-      status === "no_supported_food_detected" ||
-      (data.food_detected === false && status !== "low_confidence");
-
-    if (noFood) {
-      if (scanErrorBox) scanErrorBox.style.display = "none";
-
-      if (multiObjectsContainer) {
-        multiObjectsContainer.innerHTML = `
-          <div class="rejection-card no-food-card"
-            style="text-align:center; padding:36px 20px; background:var(--bg-alt); border-radius:var(--radius-lg); border:1px solid var(--border);">
-
-            <span style="font-size:3rem; display:block; margin-bottom:12px;">🔍</span>
-
-            <h3 style="font-size:1.35rem; font-weight:800; color:var(--text); margin-bottom:8px;">
-              No Food Detected
-            </h3>
-
-            <p style="font-size:0.95rem; color:var(--text-secondary); max-width:420px; margin:0 auto 12px; line-height:1.5;">
-              ${escapeHtml(
-                data.message ||
-                  err.message ||
-                  "We couldn't confidently identify a supported food item.",
-              )}
-            </p>
-
-            <p style="font-size:0.875rem; color:var(--muted); max-width:400px; margin:0 auto 20px;">
-              Please point the camera at a fruit, vegetable, or supported food item and try again.
-            </p>
-
-            <div style="display:flex; justify-content:center; gap:12px; flex-wrap:wrap;">
-              <button type="button" class="btn primary touch-friendly" id="rejectionTryAgainBtn">
-                📷 Try Again
-              </button>
-
-              <button type="button" class="btn secondary touch-friendly" id="rejectionUploadBtn">
-                🖼️ Upload Image
-              </button>
-            </div>
-          </div>
-        `;
-
-        const tryAgainBtn = document.getElementById("rejectionTryAgainBtn");
-
-        if (tryAgainBtn) {
-          tryAgainBtn.addEventListener("click", () => {
-            switchMode("live");
-          });
-        }
-
-        const uploadBtn = document.getElementById("rejectionUploadBtn");
-
-        if (uploadBtn) {
-          uploadBtn.addEventListener("click", () => {
-            switchMode("upload");
-
-            setTimeout(() => {
-              foodImage?.click();
-            }, 100);
-          });
-        }
+    if (
+      status === "prediction_timeout" ||
+      status === "prediction_unavailable"
+    ) {
+      if (scanErrorCode) {
+        scanErrorCode.textContent = err.code || "PREDICTION_ERROR";
       }
-    } else if (status === "low_confidence") {
-      if (scanErrorBox) scanErrorBox.style.display = "none";
 
-      if (multiObjectsContainer) {
-        multiObjectsContainer.innerHTML = `
-          <div class="rejection-card low-confidence-card"
-            style="text-align:center; padding:36px 20px; background:var(--bg-alt); border-radius:var(--radius-lg); border:1px solid var(--border);">
+      if (scanErrorMessage) {
+        scanErrorMessage.textContent =
+          err.message ||
+          "FreshLens AI server is taking too long to respond. Please try again.";
+      }
 
-            <span style="font-size:3rem; display:block; margin-bottom:12px;">⚠️</span>
-
-            <h3 style="font-size:1.35rem; font-weight:800; color:var(--text); margin-bottom:8px;">
-              Low Confidence
-            </h3>
-
-            <p style="font-size:0.95rem; color:var(--text-secondary); max-width:420px; margin:0 auto 16px; line-height:1.5;">
-              ${escapeHtml(
-                data.message ||
-                  err.message ||
-                  "The food could not be identified confidently.",
-              )}
-            </p>
-
-            <div style="text-align:left; max-width:340px; margin:0 auto 24px; padding:14px 18px; background:var(--card); border-radius:var(--radius-md); border:1px solid var(--border);">
-              <strong style="font-size:0.875rem; color:var(--text); display:block; margin-bottom:6px;">
-                Try:
-              </strong>
-
-              <ul style="font-size:0.85rem; color:var(--text-secondary); margin:0; padding-left:18px; line-height:1.6;">
-                <li>Better, even lighting</li>
-                <li>A closer image of the food item</li>
-                <li>A plain background</li>
-                <li>Keeping the food centered</li>
-              </ul>
-            </div>
-
-            <div style="display:flex; justify-content:center; gap:12px; flex-wrap:wrap;">
-              <button type="button" class="btn primary touch-friendly" id="lowConfTryAgainBtn">
-                📷 Try Again
-              </button>
-
-              <button type="button" class="btn secondary touch-friendly" id="lowConfUploadBtn">
-                🖼️ Upload Image
-              </button>
-            </div>
-          </div>
-        `;
-
-        const tryAgainBtn = document.getElementById("lowConfTryAgainBtn");
-
-        if (tryAgainBtn) {
-          tryAgainBtn.addEventListener("click", () => {
-            switchMode("live");
-          });
-        }
-
-        const uploadBtn = document.getElementById("lowConfUploadBtn");
-
-        if (uploadBtn) {
-          uploadBtn.addEventListener("click", () => {
-            switchMode("upload");
-
-            setTimeout(() => {
-              foodImage?.click();
-            }, 100);
-          });
-        }
+      if (scanErrorBox) {
+        scanErrorBox.style.display = "flex";
       }
     } else {
-      if (scanErrorCode) scanErrorCode.textContent = err.code || "Scan Error";
+      const noFood =
+        status === "no_food" ||
+        status === "no_supported_food_detected" ||
+        (data.food_detected === false && status !== "low_confidence");
 
-      if (scanErrorMessage)
-        scanErrorMessage.textContent =
-          err.message || "Please upload a clearer food image.";
+      if (noFood) {
+        if (scanErrorBox) {
+          scanErrorBox.style.display = "none";
+        }
 
-      if (scanErrorBox) scanErrorBox.style.display = "flex";
+        if (multiObjectsContainer) {
+          multiObjectsContainer.innerHTML = `
+            <div class="rejection-card no-food-card"
+              style="text-align:center; padding:36px 20px; background:var(--bg-alt); border-radius:var(--radius-lg); border:1px solid var(--border);">
+
+              <span style="font-size:3rem; display:block; margin-bottom:12px;">🔍</span>
+
+              <h3 style="font-size:1.35rem; font-weight:800; color:var(--text); margin-bottom:8px;">
+                No Food Detected
+              </h3>
+
+              <p style="font-size:0.95rem; color:var(--text-secondary); max-width:420px; margin:0 auto 12px; line-height:1.5;">
+                ${escapeHtml(
+                  data.message ||
+                    err.message ||
+                    "We couldn't confidently identify a supported food item.",
+                )}
+              </p>
+
+              <p style="font-size:0.875rem; color:var(--muted); max-width:400px; margin:0 auto 20px;">
+                Please point the camera at a fruit, vegetable, or supported food item and try again.
+              </p>
+
+              <div style="display:flex; justify-content:center; gap:12px; flex-wrap:wrap;">
+                <button type="button" class="btn primary touch-friendly" id="rejectionTryAgainBtn">
+                  📷 Try Again
+                </button>
+
+                <button type="button" class="btn secondary touch-friendly" id="rejectionUploadBtn">
+                  🖼️ Upload Image
+                </button>
+              </div>
+            </div>
+          `;
+
+          const tryAgainBtn = document.getElementById("rejectionTryAgainBtn");
+
+          if (tryAgainBtn) {
+            tryAgainBtn.addEventListener("click", () => {
+              switchMode("live");
+            });
+          }
+
+          const uploadBtn = document.getElementById("rejectionUploadBtn");
+
+          if (uploadBtn) {
+            uploadBtn.addEventListener("click", () => {
+              switchMode("upload");
+
+              setTimeout(() => {
+                foodImage?.click();
+              }, 100);
+            });
+          }
+        }
+      } else if (status === "low_confidence") {
+        if (scanErrorBox) {
+          scanErrorBox.style.display = "none";
+        }
+
+        if (multiObjectsContainer) {
+          multiObjectsContainer.innerHTML = `
+            <div class="rejection-card low-confidence-card"
+              style="text-align:center; padding:36px 20px; background:var(--bg-alt); border-radius:var(--radius-lg); border:1px solid var(--border);">
+
+              <span style="font-size:3rem; display:block; margin-bottom:12px;">⚠️</span>
+
+              <h3 style="font-size:1.35rem; font-weight:800; color:var(--text); margin-bottom:8px;">
+                Low Confidence
+              </h3>
+
+              <p style="font-size:0.95rem; color:var(--text-secondary); max-width:420px; margin:0 auto 16px; line-height:1.5;">
+                ${escapeHtml(
+                  data.message ||
+                    err.message ||
+                    "The food could not be identified confidently.",
+                )}
+              </p>
+
+              <div style="text-align:left; max-width:340px; margin:0 auto 24px; padding:14px 18px; background:var(--card); border-radius:var(--radius-md); border:1px solid var(--border);">
+                <strong style="font-size:0.875rem; color:var(--text); display:block; margin-bottom:6px;">
+                  Try:
+                </strong>
+
+                <ul style="font-size:0.85rem; color:var(--text-secondary); margin:0; padding-left:18px; line-height:1.6;">
+                  <li>Better, even lighting</li>
+                  <li>A closer image of the food item</li>
+                  <li>A plain background</li>
+                  <li>Keeping the food centered</li>
+                </ul>
+              </div>
+
+              <div style="display:flex; justify-content:center; gap:12px; flex-wrap:wrap;">
+                <button type="button" class="btn primary touch-friendly" id="lowConfTryAgainBtn">
+                  📷 Try Again
+                </button>
+
+                <button type="button" class="btn secondary touch-friendly" id="lowConfUploadBtn">
+                  🖼️ Upload Image
+                </button>
+              </div>
+            </div>
+          `;
+
+          const tryAgainBtn = document.getElementById("lowConfTryAgainBtn");
+
+          if (tryAgainBtn) {
+            tryAgainBtn.addEventListener("click", () => {
+              switchMode("live");
+            });
+          }
+
+          const uploadBtn = document.getElementById("lowConfUploadBtn");
+
+          if (uploadBtn) {
+            uploadBtn.addEventListener("click", () => {
+              switchMode("upload");
+
+              setTimeout(() => {
+                foodImage?.click();
+              }, 100);
+            });
+          }
+        }
+      } else {
+        if (scanErrorCode) {
+          scanErrorCode.textContent = err.code || "Scan Error";
+        }
+
+        if (scanErrorMessage) {
+          scanErrorMessage.textContent =
+            err.message || "Please upload a clearer food image.";
+        }
+
+        if (scanErrorBox) {
+          scanErrorBox.style.display = "flex";
+        }
+      }
     }
 
     if (window.innerWidth <= 768 && resultCard) {
@@ -1166,6 +1706,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     lastUploadedImageUrl = data.image_url || "";
+
     lastPredictedLabel = data.label || "";
 
     if (scanInferenceTime && data.inference_time_ms) {
@@ -1175,14 +1716,19 @@ document.addEventListener("DOMContentLoaded", () => {
     if (data.annotated_image_url && annotatedImage) {
       annotatedImage.src = data.annotated_image_url;
 
-      if (annotatedImageBox) annotatedImageBox.style.display = "block";
+      if (annotatedImageBox) {
+        annotatedImageBox.style.display = "block";
+      }
     }
 
     if (data.warning) {
-      if (categoryWarningMessage)
+      if (categoryWarningMessage) {
         categoryWarningMessage.textContent = data.warning;
+      }
 
-      if (categoryWarningBox) categoryWarningBox.style.display = "flex";
+      if (categoryWarningBox) {
+        categoryWarningBox.style.display = "flex";
+      }
     }
 
     const summary = data.summary || {};
@@ -1203,14 +1749,19 @@ document.addEventListener("DOMContentLoaded", () => {
             &nbsp;|&nbsp;
             🍱 Foods: ${Number(summary.food) || 0}
           </div>
+
           <div style="font-size:0.8rem; color:var(--text-secondary); opacity:0.9;">
-            ✅ Fresh: ${Number(summary.fresh) || 0} &nbsp;|&nbsp; ⚠️ Spoiled: ${Number(summary.spoiled) || 0}
+            ✅ Fresh: ${Number(summary.fresh) || 0}
+            &nbsp;|&nbsp;
+            ⚠️ Spoiled: ${Number(summary.spoiled) || 0}
           </div>
         </div>
       `;
     }
 
-    if (resultSummaryBar) resultSummaryBar.style.display = "block";
+    if (resultSummaryBar) {
+      resultSummaryBar.style.display = "block";
+    }
 
     if (viewAnalysisPrompt) {
       viewAnalysisPrompt.style.display = "block";
@@ -1232,9 +1783,13 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     }
 
-    if (afterScanActions) afterScanActions.style.display = "flex";
+    if (afterScanActions) {
+      afterScanActions.style.display = "flex";
+    }
 
-    if (feedbackSection) feedbackSection.style.display = "block";
+    if (feedbackSection) {
+      feedbackSection.style.display = "block";
+    }
 
     if (window.innerWidth <= 768 && resultCard) {
       resultCard.scrollIntoView({
@@ -1246,6 +1801,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function createObjectResultCard(obj = {}) {
     const card = document.createElement("div");
+
     card.className = "detected-item-card";
 
     const item = escapeHtml(obj.item || "Unknown Food");
@@ -1255,6 +1811,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const freshness = obj.freshness || "";
 
     let badgeClass = "neutral";
+
     let badgeText = obj.freshness_status || "Not Available";
 
     if (freshness === "Fresh") {
@@ -1262,6 +1819,7 @@ document.addEventListener("DOMContentLoaded", () => {
       badgeText = "Fresh ✅";
     } else if (freshness === "Spoiled") {
       badgeClass = "spoiled";
+
       badgeText = "Spoiled ⚠️";
     }
 
@@ -1411,7 +1969,9 @@ document.addEventListener("DOMContentLoaded", () => {
     feedbackYes.addEventListener("click", async () => {
       feedbackYes.disabled = true;
 
-      if (feedbackNo) feedbackNo.disabled = true;
+      if (feedbackNo) {
+        feedbackNo.disabled = true;
+      }
 
       try {
         const response = await fetch("/api/v1/feedback", {
@@ -1427,11 +1987,15 @@ document.addEventListener("DOMContentLoaded", () => {
           }),
         });
 
-        if (!response.ok) throw new Error("Feedback request failed");
+        if (!response.ok) {
+          throw new Error("Feedback request failed");
+        }
 
         if (feedbackResultMsg) {
           feedbackResultMsg.textContent = "✅ Thank you! Accuracy recorded.";
+
           feedbackResultMsg.style.color = "var(--primary)";
+
           feedbackResultMsg.style.display = "block";
         }
       } catch (error) {
@@ -1442,7 +2006,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
   if (feedbackNo) {
     feedbackNo.addEventListener("click", () => {
-      if (correctionForm) correctionForm.style.display = "block";
+      if (correctionForm) {
+        correctionForm.style.display = "block";
+      }
     });
   }
 
@@ -1454,10 +2020,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
       if (!chosenItem || !chosenCondition) {
         alert("Please select both the produce item and freshness condition.");
+
         return;
       }
 
       submitFeedbackBtn.disabled = true;
+
       submitFeedbackBtn.textContent = "Submitting...";
 
       const formattedLabel = `${chosenCondition.toLowerCase()}${chosenItem
@@ -1478,21 +2046,29 @@ document.addEventListener("DOMContentLoaded", () => {
           }),
         });
 
-        if (!response.ok) throw new Error("Feedback submission failed");
+        if (!response.ok) {
+          throw new Error("Feedback submission failed");
+        }
 
-        if (correctionForm) correctionForm.style.display = "none";
+        if (correctionForm) {
+          correctionForm.style.display = "none";
+        }
 
         if (feedbackResultMsg) {
           feedbackResultMsg.textContent =
             "✅ Feedback queued for supervised quality review and batch training.";
+
           feedbackResultMsg.style.color = "var(--primary)";
+
           feedbackResultMsg.style.display = "block";
         }
       } catch (error) {
         console.error("Feedback error:", error);
+
         alert("Feedback submission failed.");
       } finally {
         submitFeedbackBtn.disabled = false;
+
         submitFeedbackBtn.textContent = "Submit Feedback";
       }
     });
@@ -1507,7 +2083,9 @@ document.addEventListener("DOMContentLoaded", () => {
           }
         });
       },
-      { threshold: 0.15 },
+      {
+        threshold: 0.15,
+      },
     );
 
     document.querySelectorAll(".reveal-on-scroll").forEach((element) => {
