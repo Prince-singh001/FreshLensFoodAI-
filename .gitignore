@@ -1,133 +1,87 @@
-# =========================
 # Python
-# =========================
 __pycache__/
 *.py[cod]
 *$py.class
 
-# =========================
 # Virtual Environment
-# =========================
 venv/
 backend/venv/
+.venv/
+
+# Environment Variables
 .env
 .env.*
 
-# =========================
 # VS Code
-# =========================
 .vscode/
 
-# =========================
 # PyCharm
-# =========================
 .idea/
 
-# =========================
-# Dataset (Very Large)
-# =========================
+# Dataset
 dataset/
 backend/dataset/
+backend/yolo_dataset/
+backend/yolo_dataset_small/
 
-# =========================
 # Training Graphs
-# =========================
 graphs/
 backend/graphs/
 
-# =========================
 # Upload Images
-# =========================
 frontend/static/uploads/
 
-# =========================
 # Logs
-# =========================
 *.log
 
-# =========================
 # TensorFlow Checkpoints
-# =========================
 checkpoint
 *.ckpt
 
-# =========================
 # Cache Files
-# =========================
 .cache/
+*.cache
 
-# =========================
 # OS Files
-# =========================
 Thumbs.db
 .DS_Store
 
-# =========================
 # Jupyter
-# =========================
 .ipynb_checkpoints/
 
-# =========================
 # Build Files
-# =========================
 build/
 dist/
 
-# =========================
 # Temporary Files
-# =========================
 temp/
 tmp/
 
-# =========================
-# Model (Choose ONE option)
-# =========================
+# Generated Training Runs
+runs/
 
-# =========================
-# Local Virtual Environment
-# =========================
-.venv/
-
-# =========================
 # Trained / Generated Models
-# =========================
-models/*`r`n!models/production/`r`n!models/production/*.h5`r`n!models/production/*.tflite`r`n!models/production/*.json`r`n!models/production/*.pt
+models/*
+!models/production/
+!models/production/*.h5
+!models/production/*.tflite
+!models/production/*.json
 
-# =========================
-# Reports / Generated Outputs
-# =========================
-reports/
-
-# =========================
-# Training / Development Files
-# =========================
-training/
-
-# =========================
-# Local Tools / Generated Files
-# =========================
-tools/
-
-
-# YOLO model weights
+# YOLO Model Weights
 *.pt
 
-# Runtime scan history
+# Runtime Scan History
 backend/history.json
 
-# ML datasets
-backend/data/*`r`n!backend/data/classes.json
-
-# ML datasets and generated data
+# Backend ML Data
 backend/data/*
 !backend/data/classes.json
 
+# Reports / Generated Outputs
+reports/
 
-# OPTION 1:
-# Uncomment if you DO NOT want to upload trained model
-# backend/models/
+# Training / Development Files
+training/
 
-# OPTION 2:
-# Keep model uploaded (Recommended for project demo)
-# Leave backend/models/ visible
-`r`n# FreshLens production models`r`n!models/`n!models/production/`n!models/production/*.h5`n!models/production/*.tflite`n!models/production/*.json`n!models/production/*.pt
+# Local Tools / Generated Files
+tools/

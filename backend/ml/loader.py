@@ -259,10 +259,52 @@ def get_freshness_model():
         )
 
 
-def get_detector_model():
-    logger.info(
-        "YOLO detector disabled in production. "
-        "Using lightweight image fallback."
-    )
+_detector_model = None
 
-    return None
+
+def get_detector_model():
+    global _detector_model
+
+    if _detector_model is not None:
+        return _detector_model
+
+    with _model_lock:
+        if _detector_model is not None:
+            return _detector_model
+
+        try:
+            from ultralytics import YOLO
+
+            candidates = [
+                MODELS_DIR / "production" / "yolov8n.pt",
+                MODELS_DIR / "yolov8n.pt",
+                MODELS_DIR.parent / "yolov8n.pt"
+            ]
+
+            chosen_path = None
+            for p in candidates:
+                if p.exists():
+                    chosen_path = str(p)
+                    break
+
+            if chosen_path is None:
+                logger.info("[LOADER] YOLO weights not found. Using lightweight produce localization.")
+                return None
+
+            logger.info(f"[LOADER] Loading YOLO detector from {chosen_path}...")
+            model = YOLO(chosen_path)
+
+            # Warmup once with small dummy input so request doesn't stall
+            dummy = np.zeros((320, 320, 3), dtype=np.uint8)
+            model(dummy, verbose=False)
+
+            _detector_model = model
+            logger.info("[LOADER] YOLO detector loaded and warmed up successfully.")
+            return _detector_model
+
+        except Exception as error:
+            logger.warning(
+                f"[LOADER] YOLO detector unavailable ({error}). "
+                "Using lightweight produce localization fallback."
+            )
+            return None

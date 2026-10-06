@@ -1,0 +1,258 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Food Analysis | FreshLens AI</title>
+  <meta name="description" content="Detailed multi-object AI food analysis dashboard with freshness condition, category breakdown, nutrition facts, and food safety guidance." />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🥗</text></svg>" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+</head>
+<body>
+  {% include 'components/navbar.html' %}
+
+  <main class="analysis-page-wrapper">
+    <!-- Analysis Header Section -->
+    <header class="analysis-hero">
+      <div class="analysis-hero-inner">
+        <div class="analysis-hero-titles">
+          <span class="badge">AI Food Analysis</span>
+          <h1 id="analysisMainTitle">Food Analysis Dashboard</h1>
+          <p id="analysisSubtitle">Detailed analysis of the food items detected in your image.</p>
+        </div>
+        <div class="analysis-top-actions">
+          <a href="{{ url_for('scan') }}" class="btn secondary touch-friendly" id="backToScannerBtn">
+            ← Back to Scanner
+          </a>
+          <a href="{{ url_for('scan') }}" class="btn primary touch-friendly" id="scanAnotherBtn">
+            📷 Scan Another
+          </a>
+          <a href="{{ url_for('chatbot_page') }}" class="btn secondary touch-friendly" id="askAiAssistantBtn">
+            🤖 Ask AI Assistant
+          </a>
+        </div>
+      </div>
+    </header>
+
+    <!-- Empty State Container (shown if no scan data) -->
+    <section class="analysis-empty-state" id="analysisEmptyState" style="display: none;">
+      <div class="empty-state-card">
+        <span class="empty-icon">🥗</span>
+        <h2>No Food Analysis Data</h2>
+        <p>No recent scan was found. Capture or upload a photo in the Food Scanner to generate an AI food analysis report.</p>
+        <div class="empty-actions">
+          <a href="{{ url_for('scan') }}" class="btn primary touch-friendly">
+            Go to Food Scanner
+          </a>
+          <a href="{{ url_for('history') }}" class="btn secondary touch-friendly">
+            View Scan History
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <!-- Main Analysis Content (visible when data is present) -->
+    <section class="analysis-content-container" id="analysisContentContainer">
+      <!-- Section 1: Image Comparison Section -->
+      <section class="analysis-section" aria-labelledby="imagesSectionTitle">
+        <div class="section-header">
+          <h2 id="imagesSectionTitle" class="section-title">Visual Inspection & AI Detection</h2>
+          <span class="section-subtitle">Side-by-side comparison of the original capture and AI-annotated object detections.</span>
+        </div>
+
+        <div class="analysis-images-grid">
+          <!-- Original Image Card -->
+          <div class="analysis-image-card">
+            <div class="image-card-header">
+              <span class="image-label-badge">Original Image</span>
+              <span class="image-meta-info" id="originalImageDims">Source Photo</span>
+            </div>
+            <div class="image-frame">
+              <img id="analysisOriginalImage" src="/static/image/apple.jpg" alt="Original capture" />
+            </div>
+          </div>
+
+          <!-- AI Annotated Image Card -->
+          <div class="analysis-image-card highlight-card">
+            <div class="image-card-header">
+              <span class="image-label-badge ai-badge">AI Annotated Image</span>
+              <span class="image-meta-info" id="annotatedDetectionCount">Detected Boxes</span>
+            </div>
+            <div class="image-frame">
+              <img id="analysisAnnotatedImage" src="/static/image/apple.jpg" alt="AI Annotated detection results" />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section 2: Summary KPI Cards Section -->
+      <section class="analysis-section" aria-labelledby="summarySectionTitle">
+        <div class="section-header">
+          <h2 id="summarySectionTitle" class="section-title">AI Analysis Summary</h2>
+          <span class="section-subtitle">Key metrics aggregated across all detected produce and food items.</span>
+        </div>
+
+        <div class="kpi-grid">
+          <div class="kpi-card">
+            <span class="kpi-icon">🔍</span>
+            <div class="kpi-value" id="kpiTotalObjects">0</div>
+            <div class="kpi-label">Objects Detected</div>
+          </div>
+          <div class="kpi-card">
+            <span class="kpi-icon">🍎</span>
+            <div class="kpi-value" id="kpiFruits">0</div>
+            <div class="kpi-label">Fruits</div>
+          </div>
+          <div class="kpi-card">
+            <span class="kpi-icon">🥦</span>
+            <div class="kpi-value" id="kpiVegetables">0</div>
+            <div class="kpi-label">Vegetables</div>
+          </div>
+          <div class="kpi-card">
+            <span class="kpi-icon">🍱</span>
+            <div class="kpi-value" id="kpiOtherFoods">0</div>
+            <div class="kpi-label">Other Foods</div>
+          </div>
+          <div class="kpi-card kpi-fresh">
+            <span class="kpi-icon">✅</span>
+            <div class="kpi-value" id="kpiFresh">0</div>
+            <div class="kpi-label">Fresh Items</div>
+          </div>
+          <div class="kpi-card kpi-spoiled">
+            <span class="kpi-icon">⚠️</span>
+            <div class="kpi-value" id="kpiSpoiled">0</div>
+            <div class="kpi-label">Spoiled Items</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section 3: Two-Column Overview (Freshness Breakdown + Nutrition Summary) -->
+      <section class="analysis-section">
+        <div class="overview-dual-grid">
+          <!-- Freshness Overview Card -->
+          <div class="overview-panel">
+            <div class="panel-header">
+              <h3>Freshness Overview</h3>
+              <span class="badge" id="primaryFreshnessBadge">Condition</span>
+            </div>
+            <p class="panel-desc">Visual distribution of fresh versus spoiled produce items.</p>
+            <div class="freshness-stat-bars" id="freshnessStatBars">
+              <!-- Dynamically populated stat bars -->
+            </div>
+          </div>
+
+          <!-- Nutrition Overview Card -->
+          <div class="overview-panel">
+            <div class="panel-header">
+              <h3>Nutrition Overview</h3>
+              <span class="badge" id="nutritionItemCountBadge">0 Items</span>
+            </div>
+            <p class="panel-desc">Estimated totals calculated from genuine food catalog data.</p>
+            <div class="nutrition-totals-grid" id="nutritionTotalsGrid">
+              <!-- Dynamically populated nutrition totals -->
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section 4: Category-Wise Produce Analysis & Duplicate Food Grouping -->
+      <section class="analysis-section" aria-labelledby="categorySectionTitle">
+        <div class="section-header">
+          <h2 id="categorySectionTitle" class="section-title">Category-Wise Breakdown</h2>
+          <span class="section-subtitle">Food items grouped cleanly by category with multi-object inspection cards.</span>
+        </div>
+
+        <!-- Fruits Category -->
+        <div class="category-block" id="categoryBlockFruits">
+          <div class="category-block-header">
+            <span class="cat-pill fruit-pill">🍎 FRUITS</span>
+            <span class="cat-count" id="fruitsGroupCount">0 items detected</span>
+          </div>
+          <div class="category-food-groups" id="fruitsFoodGroupsContainer">
+            <!-- Grouped by food item (e.g. Apple: 3 detected -> individual items) -->
+          </div>
+        </div>
+
+        <!-- Vegetables Category -->
+        <div class="category-block" id="categoryBlockVegetables">
+          <div class="category-block-header">
+            <span class="cat-pill veg-pill">🥦 VEGETABLES</span>
+            <span class="cat-count" id="vegetablesGroupCount">0 items detected</span>
+          </div>
+          <div class="category-food-groups" id="vegetablesFoodGroupsContainer">
+            <!-- Grouped vegetables -->
+          </div>
+        </div>
+
+        <!-- Other Foods Category -->
+        <div class="category-block" id="categoryBlockOther">
+          <div class="category-block-header">
+            <span class="cat-pill food-pill">🍱 OTHER FOODS</span>
+            <span class="cat-count" id="otherGroupCount">0 items detected</span>
+          </div>
+          <div class="category-food-groups" id="otherFoodGroupsContainer">
+            <!-- Grouped other foods -->
+          </div>
+        </div>
+      </section>
+
+      <!-- Section 5: Food Safety Guidance & Storage Recommendations -->
+      <section class="analysis-section" aria-labelledby="safetySectionTitle">
+        <div class="section-header">
+          <h2 id="safetySectionTitle" class="section-title">Safety & Storage Advisory</h2>
+          <span class="section-subtitle">Specific handling, preservation, and spoilage precautions based on detected items.</span>
+        </div>
+
+        <!-- Spoiled Food Alert Banner (if spoiled items detected) -->
+        <div class="safety-alert-banner spoiled-alert" id="spoiledAlertBanner" style="display: none;">
+          <div class="alert-icon">⚠️</div>
+          <div class="alert-body">
+            <h3>Spoiled Food Detected</h3>
+            <p id="spoiledAlertItemsText">One or more items show visual characteristics of decay, mold, or overripeness.</p>
+            <div class="alert-guidance-list" id="spoiledGuidanceList"></div>
+          </div>
+        </div>
+
+        <!-- Fresh Food Storage Guidance Banner -->
+        <div class="safety-alert-banner fresh-guidance" id="freshGuidanceBanner">
+          <div class="alert-icon">🌱</div>
+          <div class="alert-body">
+            <h3>Fresh Food Storage Recommendations</h3>
+            <p>Follow optimal preservation methods to maintain produce freshness and nutritional quality.</p>
+            <div class="alert-guidance-list" id="freshGuidanceList"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section 6: Low Confidence Advisory (if applicable) -->
+      <div class="low-confidence-advisory" id="lowConfidenceAdvisory" style="display: none;">
+        <span class="adv-icon">💡</span>
+        <div class="adv-body">
+          <h4>Some detected items have low confidence</h4>
+          <p id="lowConfidenceItemsList">Certain items could not be recognized with high model certainty.</p>
+          <p class="adv-sub">Consider rescanning with steady focus, balanced lighting, and a neutral background.</p>
+        </div>
+      </div>
+
+      <!-- Section 7: Bottom Action Bar -->
+      <div class="analysis-bottom-bar">
+        <a href="{{ url_for('scan') }}" class="btn primary touch-friendly" style="padding: 12px 24px;">
+          📷 Scan Another Food Image
+        </a>
+        <a href="{{ url_for('chatbot_page') }}" class="btn secondary touch-friendly" id="askAiBottomBtn" style="padding: 12px 24px;">
+          🤖 Ask AI About This Food
+        </a>
+        <a href="{{ url_for('history') }}" class="btn secondary touch-friendly" style="padding: 12px 20px;">
+          🕘 View Past History
+        </a>
+      </div>
+    </section>
+  </main>
+
+  {% include 'components/footer.html' %}
+  {% include 'components/bottom_nav.html' %}
+
+  <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/analysis.js') }}"></script>
+</body>
+</html>

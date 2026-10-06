@@ -21,7 +21,7 @@ from config import (
     ENV
 )
 from api import api_bp
-from ml.loader import get_freshness_model, get_classes_metadata, get_legacy_class_indices
+from ml.loader import get_freshness_model, get_classes_metadata, get_legacy_class_indices, get_detector_model
 from services.history_service import history_service
 from services.prediction_service import prediction_service
 from services.feedback_service import feedback_service
@@ -48,6 +48,7 @@ def preload_models_async():
         get_classes_metadata()
         get_legacy_class_indices()
         get_freshness_model()
+        get_detector_model()
         logger.info("FreshLens AI model warmup and preloading completed successfully!")
     except Exception as e:
         logger.error(f"Background model preloading warning: {e}")
@@ -75,6 +76,12 @@ def home():
 @app.route("/scan")
 def scan():
     return render_template("scan.html")
+
+
+@app.route("/analysis")
+def analysis():
+    scan_id = request.args.get("id", "")
+    return render_template("analysis.html", scan_id=scan_id)
 
 
 @app.route("/features")

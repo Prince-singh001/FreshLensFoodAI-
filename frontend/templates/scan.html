@@ -201,9 +201,16 @@
           </div>
         </div>
 
+        <!-- Primary Action to View Analysis Dashboard -->
+        <div id="viewAnalysisPrompt" style="display: none; margin-bottom: 14px;">
+          <a href="{{ url_for('analysis') }}" class="btn primary touch-friendly" id="viewDetailedAnalysisLink" style="display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 13px 20px; font-weight: 700; font-size: 0.95rem; box-shadow: var(--shadow-md);">
+            <span>📊 View Detailed Analysis →</span>
+          </a>
+        </div>
+
         <!-- After-Scan Action Bar (visible when results appear) -->
         <div class="after-scan-actions" id="afterScanActions" style="display: none;">
-          <button class="btn primary touch-friendly" id="scanAnotherBtn" type="button" style="flex:1 1 140px; padding:10px 16px; font-size:0.875rem;">
+          <button class="btn secondary touch-friendly" id="scanAnotherBtn" type="button" style="flex:1 1 140px; padding:10px 16px; font-size:0.875rem;">
             📷 Scan Another
           </button>
           <a href="{{ url_for('chatbot_page') }}" class="btn secondary touch-friendly" id="askAiGeneralBtn" style="flex:1 1 160px; padding:10px 16px; font-size:0.875rem;">

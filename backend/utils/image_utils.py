@@ -172,7 +172,7 @@ def draw_annotations(image_bgr: np.ndarray, detected_objects: List[Dict[str, Any
       - General Food / Not Available: Sky Cyan
     """
     annotated = image_bgr.copy()
-    h, w = annotated.shape[:2]
+    h, w = annotated.shape[:2] 
 
     color_map = {
         "Fresh": (16, 185, 129),     # Emerald Green in BGR

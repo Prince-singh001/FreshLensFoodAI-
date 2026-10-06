@@ -47,6 +47,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const annotatedImageBox = document.getElementById("annotatedImageBox");
   const annotatedImage = document.getElementById("annotatedImage");
   const resultSummaryBar = document.getElementById("resultSummaryBar");
+  const viewAnalysisPrompt = document.getElementById("viewAnalysisPrompt");
   const summaryText = document.getElementById("summaryText");
   const multiObjectsContainer = document.getElementById(
     "multiObjectsContainer",
@@ -743,6 +744,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (categoryWarningBox) categoryWarningBox.style.display = "none";
     if (annotatedImageBox) annotatedImageBox.style.display = "none";
     if (resultSummaryBar) resultSummaryBar.style.display = "none";
+    if (viewAnalysisPrompt) viewAnalysisPrompt.style.display = "none";
     if (afterScanActions) afterScanActions.style.display = "none";
     if (feedbackSection) feedbackSection.style.display = "none";
     if (correctionForm) correctionForm.style.display = "none";
@@ -998,6 +1000,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (resultSummaryBar) resultSummaryBar.style.display = "none";
 
+    if (viewAnalysisPrompt) viewAnalysisPrompt.style.display = "none";
+
     if (categoryWarningBox) categoryWarningBox.style.display = "none";
 
     if (afterScanActions) afterScanActions.style.display = "none";
@@ -1155,6 +1159,12 @@ document.addEventListener("DOMContentLoaded", () => {
   function renderScanSuccess(data) {
     console.log("FreshLens successful analysis:", data);
 
+    try {
+      sessionStorage.setItem("freshlens_latest_analysis", JSON.stringify(data));
+    } catch (err) {
+      console.warn("Could not save analysis to sessionStorage:", err);
+    }
+
     lastUploadedImageUrl = data.image_url || "";
     lastPredictedLabel = data.label || "";
 
@@ -1183,17 +1193,28 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (summaryText) {
       summaryText.innerHTML = `
-        <strong>${totalObjects} Object${totalObjects > 1 ? "s" : ""} Identified</strong>
-        &nbsp;|&nbsp;
-        🍎 Fruits: ${Number(summary.fruits) || 0}
-        &nbsp;|&nbsp;
-        🥦 Veg: ${Number(summary.vegetables) || 0}
-        &nbsp;|&nbsp;
-        🍱 Foods: ${Number(summary.food) || 0}
+        <div style="display:flex; flex-direction:column; gap:4px;">
+          <div>
+            <strong>${totalObjects} Object${totalObjects > 1 ? "s" : ""} Identified</strong>
+            &nbsp;|&nbsp;
+            🍎 Fruits: ${Number(summary.fruits) || 0}
+            &nbsp;|&nbsp;
+            🥦 Vegetables: ${Number(summary.vegetables) || 0}
+            &nbsp;|&nbsp;
+            🍱 Foods: ${Number(summary.food) || 0}
+          </div>
+          <div style="font-size:0.8rem; color:var(--text-secondary); opacity:0.9;">
+            ✅ Fresh: ${Number(summary.fresh) || 0} &nbsp;|&nbsp; ⚠️ Spoiled: ${Number(summary.spoiled) || 0}
+          </div>
+        </div>
       `;
     }
 
     if (resultSummaryBar) resultSummaryBar.style.display = "block";
+
+    if (viewAnalysisPrompt) {
+      viewAnalysisPrompt.style.display = "block";
+    }
 
     if (multiObjectsContainer) {
       multiObjectsContainer.innerHTML = "";

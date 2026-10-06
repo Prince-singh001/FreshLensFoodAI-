@@ -4,30 +4,55 @@ import time
 from typing import List, Dict, Any, Tuple, Optional
 
 try:
+    from config import CONFIDENCE_THRESHOLD, FOOD_CONFIDENCE_THRESHOLD
+    from ml.loader import get_detector_model
+    from ml.freshness import classify_food_crop
     from utils.logger import logger
 except ImportError:
+    from backend.config import CONFIDENCE_THRESHOLD, FOOD_CONFIDENCE_THRESHOLD
+    from backend.ml.loader import get_detector_model
+    from backend.ml.freshness import classify_food_crop
     from backend.utils.logger import logger
 
+NON_FOOD_REJECTION_CLASSES = {
+    "person", "bicycle", "car", "motorcycle", "airplane", "bus", "train", "truck",
+    "boat", "traffic light", "fire hydrant", "stop sign", "parking meter", "bench",
+    "bird", "cat", "dog", "horse", "sheep", "cow", "elephant", "bear", "zebra", "giraffe",
+    "backpack", "umbrella", "handbag", "tie", "suitcase", "frisbee", "skis", "snowboard",
+    "sports ball", "kite", "baseball bat", "baseball glove", "skateboard", "surfboard",
+    "tennis racket", "bottle", "wine glass", "cup", "fork", "knife", "spoon", "bowl",
+    "chair", "couch", "potted plant", "bed", "dining table", "toilet", "tv", "laptop",
+    "mouse", "remote", "keyboard", "cell phone", "microwave", "oven", "toaster", "sink",
+    "refrigerator", "book", "clock", "vase", "scissors", "teddy bear", "hair drier", "toothbrush"
+}
 
-def _box_area(box):
+COCO_FOOD_CLASSES = {
+    "banana": "Banana",
+    "apple": "Apple",
+    "orange": "Orange",
+    "carrot": "Carrot",
+    "broccoli": "Broccoli",
+    "pizza": "Pizza",
+    "sandwich": "Sandwich",
+    "hot dog": "Hot Dog",
+    "donut": "Donut",
+    "cake": "Cake"
+}
+
+
+def _box_area(box: Dict[str, int]) -> int:
     return max(0, box["x2"] - box["x1"]) * max(0, box["y2"] - box["y1"])
 
 
-def _clip_box(box, width, height):
+def _clip_box(box: Dict[str, int], width: int, height: int) -> Dict[str, int]:
     x1 = max(0, min(int(box["x1"]), width - 1))
     y1 = max(0, min(int(box["y1"]), height - 1))
     x2 = max(x1 + 1, min(int(box["x2"]), width))
     y2 = max(y1 + 1, min(int(box["y2"]), height))
-
-    return {
-        "x1": x1,
-        "y1": y1,
-        "x2": x2,
-        "y2": y2
-    }
+    return {"x1": x1, "y1": y1, "x2": x2, "y2": y2}
 
 
-def _iou(a, b):
+def _iou(a: Dict[str, int], b: Dict[str, int]) -> float:
     x1 = max(a["x1"], b["x1"])
     y1 = max(a["y1"], b["y1"])
     x2 = min(a["x2"], b["x2"])
@@ -35,21 +60,17 @@ def _iou(a, b):
 
     w = max(0, x2 - x1)
     h = max(0, y2 - y1)
-
     intersection = w * h
-
     if intersection <= 0:
         return 0.0
 
     union = _box_area(a) + _box_area(b) - intersection
-
     if union <= 0:
         return 0.0
-
     return intersection / union
 
 
-def _intersection_over_smaller(a, b):
+def _intersection_over_smaller(a: Dict[str, int], b: Dict[str, int]) -> float:
     x1 = max(a["x1"], b["x1"])
     y1 = max(a["y1"], b["y1"])
     x2 = min(a["x2"], b["x2"])
@@ -57,648 +78,269 @@ def _intersection_over_smaller(a, b):
 
     w = max(0, x2 - x1)
     h = max(0, y2 - y1)
-
     intersection = w * h
-
     if intersection <= 0:
         return 0.0
 
     smaller = min(_box_area(a), _box_area(b))
-
     if smaller <= 0:
         return 0.0
-
     return intersection / smaller
 
 
-def _create_candidate(box, width, height, confidence, source):
-    box = _clip_box(box, width, height)
-
-    return {
-        "detected_label": "produce_candidate",
-        "display_name": "Produce Item",
-        "confidence": round(float(confidence), 4),
-        "is_candidate": True,
-        "bbox": box,
-        "source": source
-    }
-
-
-def _foreground_mask(image):
-    hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
-    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-
-    h, s, v = cv2.split(hsv)
-
-    colorful = (
-        (s > 30) &
-        (v > 35)
-    )
-
-    dark = gray < 190
-
-    mask = np.where(
-        colorful | dark,
-        255,
-        0
-    ).astype(np.uint8)
-
-    kernel_small = cv2.getStructuringElement(
-        cv2.MORPH_ELLIPSE,
-        (3, 3)
-    )
-
-    kernel_medium = cv2.getStructuringElement(
-        cv2.MORPH_ELLIPSE,
-        (7, 7)
-    )
-
-    mask = cv2.morphologyEx(
-        mask,
-        cv2.MORPH_OPEN,
-        kernel_small,
-        iterations=1
-    )
-
-    mask = cv2.morphologyEx(
-        mask,
-        cv2.MORPH_CLOSE,
-        kernel_medium,
-        iterations=1
-    )
-
-    return mask
-
-
-def _detect_round_objects(image):
-    height, width = image.shape[:2]
-    min_dim = min(height, width)
-
-    gray = cv2.cvtColor(
-        image,
-        cv2.COLOR_BGR2GRAY
-    )
-
-    gray = cv2.GaussianBlur(
-        gray,
-        (5, 5),
-        1.2
-    )
-
-    min_radius = max(
-        18,
-        int(min_dim * 0.045)
-    )
-
-    max_radius = max(
-        min_radius + 10,
-        int(min_dim * 0.25)
-    )
-
-    min_distance = max(
-        28,
-        int(min_dim * 0.10)
-    )
-
-    candidates = []
-
-    for param2 in (32, 28, 24, 20):
-
-        try:
-            circles = cv2.HoughCircles(
-                gray,
-                cv2.HOUGH_GRADIENT,
-                dp=1.15,
-                minDist=min_distance,
-                param1=100,
-                param2=param2,
-                minRadius=min_radius,
-                maxRadius=max_radius
-            )
-        except Exception:
-            circles = None
-
-        if circles is None:
-            continue
-
-        circles = np.round(
-            circles[0]
-        ).astype(int)
-
-        for x, y, radius in circles:
-
-            if radius <= 0:
-                continue
-
-            padding = max(
-                5,
-                int(radius * 0.16)
-            )
-
-            box = {
-                "x1": x - radius - padding,
-                "y1": y - radius - padding,
-                "x2": x + radius + padding,
-                "y2": y + radius + padding
-            }
-
-            box = _clip_box(
-                box,
-                width,
-                height
-            )
-
-            bw = box["x2"] - box["x1"]
-            bh = box["y2"] - box["y1"]
-
-            if bw < 35 or bh < 35:
-                continue
-
-            candidates.append(
-                _create_candidate(
-                    box,
-                    width,
-                    height,
-                    0.88,
-                    "round_object"
-                )
-            )
-
-        if len(candidates) >= 3:
-            break
-
-    return candidates
-
-
-def _detect_elongated_objects(image):
-    height, width = image.shape[:2]
-    total_area = height * width
-
-    mask = _foreground_mask(image)
-
-    candidates = []
-
-    regions = [
-        (
-            0,
-            int(height * 0.72),
-            "top_elongated"
-        ),
-        (
-            0,
-            height,
-            "elongated"
-        )
-    ]
-
-    for start_y, end_y, source in regions:
-
-        roi = mask[start_y:end_y, :]
-
-        contours, _ = cv2.findContours(
-            roi,
-            cv2.RETR_EXTERNAL,
-            cv2.CHAIN_APPROX_SIMPLE
-        )
-
-        for contour in contours:
-
-            area = cv2.contourArea(contour)
-
-            if area < total_area * 0.015:
-                continue
-
-            if area > total_area * 0.55:
-                continue
-
-            x, local_y, w, h = cv2.boundingRect(
-                contour
-            )
-
-            y = local_y + start_y
-
-            if w < 45 or h < 25:
-                continue
-
-            aspect = w / float(max(h, 1))
-
-            if aspect < 1.35:
-                continue
-
-            rect_area = w * h
-
-            if rect_area <= 0:
-                continue
-
-            fill_ratio = area / rect_area
-
-            if fill_ratio < 0.18:
-                continue
-
-            box = {
-                "x1": x,
-                "y1": y,
-                "x2": x + w,
-                "y2": y + h
-            }
-
-            candidates.append(
-                _create_candidate(
-                    box,
-                    width,
-                    height,
-                    0.82,
-                    source
-                )
-            )
-
-    return candidates
-
-
-def _detect_contour_objects(image):
-    height, width = image.shape[:2]
-    total_area = height * width
-
-    mask = _foreground_mask(image)
-
-    contours, _ = cv2.findContours(
-        mask,
-        cv2.RETR_LIST,
-        cv2.CHAIN_APPROX_SIMPLE
-    )
-
-    candidates = []
-
-    for contour in contours:
-
-        area = cv2.contourArea(contour)
-
-        if area < total_area * 0.012:
-            continue
-
-        if area > total_area * 0.40:
-            continue
-
-        x, y, w, h = cv2.boundingRect(
-            contour
-        )
-
-        if w < 30 or h < 30:
-            continue
-
-        box_area = w * h
-
-        if box_area <= 0:
-            continue
-
-        fill_ratio = area / box_area
-
-        if fill_ratio < 0.12:
-            continue
-
-        aspect = w / float(max(h, 1))
-
-        if aspect < 0.25 or aspect > 5.5:
-            continue
-
-        candidates.append(
-            _create_candidate(
-                {
-                    "x1": x,
-                    "y1": y,
-                    "x2": x + w,
-                    "y2": y + h
-                },
-                width,
-                height,
-                0.58,
-                "contour"
-            )
-        )
-
-    return candidates
-
-
-def _detect_grid_regions(image):
-    height, width = image.shape[:2]
-
-    candidates = []
-
-    cols = 3
-    rows = 2
-
-    cell_w = width / cols
-    cell_h = height / rows
-
-    for row in range(rows):
-        for col in range(cols):
-
-            x1 = int(max(0, col * cell_w - cell_w * 0.10))
-            y1 = int(max(0, row * cell_h - cell_h * 0.10))
-
-            x2 = int(min(width, (col + 1) * cell_w + cell_w * 0.10))
-            y2 = int(min(height, (row + 1) * cell_h + cell_h * 0.10))
-
-            candidates.append(
-                _create_candidate(
-                    {
-                        "x1": x1,
-                        "y1": y1,
-                        "x2": x2,
-                        "y2": y2
-                    },
-                    width,
-                    height,
-                    0.35,
-                    "grid"
-                )
-            )
-
-    return candidates
-
-
-def _deduplicate_candidates(candidates, max_candidates=8):
+def _deduplicate_candidates(candidates: List[Dict[str, Any]], iou_thresh: float = 0.45, max_candidates: int = 10) -> List[Dict[str, Any]]:
     if not candidates:
         return []
 
-    candidates = sorted(
-        candidates,
-        key=lambda item: item.get(
-            "confidence",
-            0
-        ),
-        reverse=True
-    )
+    # Sort descending by confidence
+    candidates = sorted(candidates, key=lambda c: c.get("confidence", 0.0), reverse=True)
+    selected: List[Dict[str, Any]] = []
 
-    selected = []
-
-    for candidate in candidates:
-
-        box = candidate["bbox"]
-
+    for cand in candidates:
+        box = cand["bbox"]
         duplicate = False
-
-        for existing in selected:
-
-            existing_box = existing["bbox"]
-
-            iou = _iou(
-                box,
-                existing_box
-            )
-
-            smaller_overlap = _intersection_over_smaller(
-                box,
-                existing_box
-            )
-
-            if iou >= 0.55:
+        for ex in selected:
+            ex_box = ex["bbox"]
+            iou_val = _iou(box, ex_box)
+            ios_val = _intersection_over_smaller(box, ex_box)
+            if iou_val >= iou_thresh or ios_val >= 0.70:
                 duplicate = True
                 break
 
-            if smaller_overlap >= 0.82:
-                duplicate = True
+        if not duplicate:
+            selected.append(cand)
+            if len(selected) >= max_candidates:
                 break
 
-        if duplicate:
-            continue
-
-        selected.append(candidate)
-
-        if len(selected) >= max_candidates:
-            break
-
-    selected.sort(
-        key=lambda item: (
-            item["bbox"]["y1"],
-            item["bbox"]["x1"]
-        )
-    )
-
-    for index, candidate in enumerate(
-        selected,
-        start=1
-    ):
-        candidate["id"] = index
-
+    # Order top-to-bottom, left-to-right
+    selected.sort(key=lambda c: (c["bbox"]["y1"], c["bbox"]["x1"]))
+    for idx, c in enumerate(selected, start=1):
+        c["id"] = idx
     return selected
 
 
-def find_salient_food_regions(image_bgr):
-    if image_bgr is None:
-        return []
+def _foreground_mask(image: np.ndarray) -> np.ndarray:
+    hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    _, s, v = cv2.split(hsv)
 
-    if not isinstance(
-        image_bgr,
-        np.ndarray
-    ):
-        return []
+    colorful = (s > 25) & (v > 30)
+    non_white = gray < 235
+    non_black = gray > 20
 
-    if image_bgr.size == 0:
+    mask = np.where((colorful | non_white) & non_black, 255, 0).astype(np.uint8)
+    kernel_small = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
+    kernel_medium = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (9, 9))
+
+    mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel_small, iterations=1)
+    mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel_medium, iterations=1)
+    return mask
+
+
+def find_salient_food_regions(image_bgr: np.ndarray) -> List[Dict[str, Any]]:
+    """
+    Lightweight computer vision localization fallback:
+    Extracts distinct foreground produce regions using color/luminance segmentation
+    and distance-transform component analysis.
+    Assigns food identity using learned classifier rather than shape rules.
+    """
+    if image_bgr is None or image_bgr.size == 0:
         return []
 
     height, width = image_bgr.shape[:2]
+    total_area = height * width
+    mask = _foreground_mask(image_bgr)
 
-    if height <= 0 or width <= 0:
-        return []
+    candidates: List[Dict[str, Any]] = []
 
-    try:
+    # Distance transform to separate touching produce items
+    dist = cv2.distanceTransform(mask, cv2.DIST_L2, 5)
+    dist_max = dist.max()
 
-        max_dimension = max(
-            height,
-            width
-        )
+    if dist_max > 0:
+        # High confidence cores
+        _, sure_fg = cv2.threshold(dist, 0.30 * dist_max, 255, cv2.THRESH_BINARY)
+        sure_fg = np.uint8(sure_fg)
 
-        if max_dimension > 900:
+        contours, _ = cv2.findContours(sure_fg, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        for cnt in contours:
+            area = cv2.contourArea(cnt)
+            if area < total_area * 0.008:
+                continue
 
-            scale = 900.0 / max_dimension
+            x, y, w, h = cv2.boundingRect(cnt)
+            # Expand bounding box slightly to capture full produce edges
+            pad_x = int(w * 0.25)
+            pad_y = int(h * 0.25)
+            box = _clip_box({
+                "x1": x - pad_x,
+                "y1": y - pad_y,
+                "x2": x + w + pad_x,
+                "y2": y + h + pad_y
+            }, width, height)
 
-            working = cv2.resize(
-                image_bgr,
-                None,
-                fx=scale,
-                fy=scale,
-                interpolation=cv2.INTER_AREA
-            )
+            bw = box["x2"] - box["x1"]
+            bh = box["y2"] - box["y1"]
+            if bw < 35 or bh < 35:
+                continue
 
-        else:
-            working = image_bgr.copy()
+            # Classify crop using learned classifier
+            crop = image_bgr[box["y1"]:box["y2"], box["x1"]:box["x2"]]
+            if crop.size > 0:
+                item_key, item_display, category, conf = classify_food_crop(crop)
+                candidates.append({
+                    "detected_label": item_key,
+                    "display_name": item_display,
+                    "category": category,
+                    "confidence": round(float(conf), 4),
+                    "bbox": box,
+                    "source": "dt_contour"
+                })
 
-        wh, ww = working.shape[:2]
+    # Also inspect external contours of full mask
+    contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    for cnt in contours:
+        area = cv2.contourArea(cnt)
+        if area < total_area * 0.02 or area > total_area * 0.85:
+            continue
 
-        candidates = []
+        x, y, w, h = cv2.boundingRect(cnt)
+        box = _clip_box({"x1": x, "y1": y, "x2": x + w, "y2": y + h}, width, height)
+        bw = box["x2"] - box["x1"]
+        bh = box["y2"] - box["y1"]
+        if bw < 40 or bh < 40:
+            continue
 
-        round_candidates = _detect_round_objects(
-            working
-        )
+        crop = image_bgr[box["y1"]:box["y2"], box["x1"]:box["x2"]]
+        if crop.size > 0:
+            item_key, item_display, category, conf = classify_food_crop(crop)
+            candidates.append({
+                "detected_label": item_key,
+                "display_name": item_display,
+                "category": category,
+                "confidence": round(float(conf), 4),
+                "bbox": box,
+                "source": "mask_contour"
+            })
 
-        candidates.extend(
-            round_candidates
-        )
+    # If no candidate was found, fallback to full image
+    if not candidates:
+        crop = image_bgr.copy()
+        item_key, item_display, category, conf = classify_food_crop(crop)
+        candidates.append({
+            "detected_label": item_key,
+            "display_name": item_display,
+            "category": category,
+            "confidence": round(float(conf), 4),
+            "bbox": {"x1": 0, "y1": 0, "x2": width, "y2": height},
+            "source": "full_image"
+        })
 
-        elongated_candidates = _detect_elongated_objects(
-            working
-        )
-
-        candidates.extend(
-            elongated_candidates
-        )
-
-        contour_candidates = _detect_contour_objects(
-            working
-        )
-
-        candidates.extend(
-            contour_candidates
-        )
-
-        if len(candidates) < 2:
-
-            grid_candidates = _detect_grid_regions(
-                working
-            )
-
-            candidates.extend(
-                grid_candidates
-            )
-
-        scale_x = width / float(ww)
-        scale_y = height / float(wh)
-
-        converted = []
-
-        for candidate in candidates:
-
-            box = candidate["bbox"]
-
-            original_box = {
-                "x1": int(box["x1"] * scale_x),
-                "y1": int(box["y1"] * scale_y),
-                "x2": int(box["x2"] * scale_x),
-                "y2": int(box["y2"] * scale_y)
-            }
-
-            candidate["bbox"] = _clip_box(
-                original_box,
-                width,
-                height
-            )
-
-            converted.append(candidate)
-
-        result = _deduplicate_candidates(
-            converted,
-            max_candidates=8
-        )
-
-        if not result:
-
-            result = [
-                _create_candidate(
-                    {
-                        "x1": 0,
-                        "y1": 0,
-                        "x2": width,
-                        "y2": height
-                    },
-                    width,
-                    height,
-                    0.30,
-                    "full_image"
-                )
-            ]
-
-        logger.info(
-            f"[DETECTOR] Multi-object fallback generated "
-            f"{len(result)} candidate(s)."
-        )
-
-        for candidate in result:
-
-            logger.info(
-                f"[DETECTOR] Candidate "
-                f"{candidate['id']} | "
-                f"source={candidate.get('source')} | "
-                f"bbox={candidate['bbox']} | "
-                f"confidence={candidate['confidence']}"
-            )
-
-        return result
-
-    except Exception as error:
-
-        logger.exception(
-            f"[DETECTOR] Localization failed: {error}"
-        )
-
-        return []
+    return _deduplicate_candidates(candidates, iou_thresh=0.45, max_candidates=10)
 
 
 def detect_objects_in_image(
     image_bgr: np.ndarray
-) -> Tuple[
-    List[Dict[str, Any]],
-    bool,
-    Optional[str]
-]:
-
+) -> Tuple[List[Dict[str, Any]], bool, Optional[str]]:
+    """
+    Detects and localizes food produce items in the image.
+    Uses YOLO detector when available, with non-food rejection logic.
+    Gracefully falls back to computer vision localization + learned crop classification.
+    Returns:
+        (detected_objects, is_rejected_non_food, rejection_message)
+    """
     started_at = time.perf_counter()
+    logger.info("[DETECTOR] Detection started.")
 
-    logger.info(
-        "[DETECTOR] Detection started."
-    )
+    if image_bgr is None or not isinstance(image_bgr, np.ndarray) or image_bgr.size == 0:
+        return [], True, "Invalid image data."
 
-    if image_bgr is None:
-        return [], True, "Invalid image."
+    height, width = image_bgr.shape[:2]
+    logger.info(f"[DETECTOR] Image shape: {height}x{width}")
 
-    if not isinstance(
-        image_bgr,
-        np.ndarray
-    ):
-        return [], True, "Invalid image format."
+    if height < 16 or width < 16:
+        return [], True, "Image resolution is too small."
 
-    if image_bgr.size == 0:
-        return [], True, "Empty image."
+    detector = get_detector_model()
 
-    try:
+    if detector is not None:
+        try:
+            logger.info("[DETECTOR] Running YOLO inference...")
+            results = detector.predict(
+                source=image_bgr,
+                conf=0.25,
+                imgsz=640,
+                max_det=12,
+                device="cpu",
+                verbose=False
+            )
 
-        height, width = image_bgr.shape[:2]
+            food_detections: List[Dict[str, Any]] = []
+            non_food_detections: List[Tuple[str, float]] = []
 
-        logger.info(
-            f"[DETECTOR] Image shape: {height}x{width}"
-        )
+            for result in results:
+                boxes = getattr(result, "boxes", None)
+                if boxes is None:
+                    continue
+                names = getattr(result, "names", {})
 
-        if height < 10 or width < 10:
-            return [], True, "Image resolution is too small."
+                for box in boxes:
+                    try:
+                        cls_id = int(box.cls[0])
+                        cls_name = str(names.get(cls_id, "")).lower().strip()
+                        conf = float(box.conf[0])
+                        coords = box.xyxy[0].tolist()
+                        if len(coords) != 4:
+                            continue
 
-        logger.info(
-            "[DETECTOR] YOLO disabled."
-        )
+                        clipped = _clip_box({
+                            "x1": int(coords[0]),
+                            "y1": int(coords[1]),
+                            "x2": int(coords[2]),
+                            "y2": int(coords[3])
+                        }, width, height)
 
-        logger.info(
-            "[DETECTOR] Running lightweight multi-object localization."
-        )
+                        if cls_name in NON_FOOD_REJECTION_CLASSES and conf >= 0.45:
+                            non_food_detections.append((cls_name, conf))
+                        elif cls_name in COCO_FOOD_CLASSES:
+                            food_detections.append({
+                                "detected_label": cls_name,
+                                "display_name": COCO_FOOD_CLASSES[cls_name],
+                                "confidence": round(conf, 4),
+                                "bbox": clipped,
+                                "source": "yolo"
+                            })
+                    except Exception as err:
+                        logger.warning(f"[DETECTOR] Failed parsing box: {err}")
+                        continue
 
-        candidates = find_salient_food_regions(
-            image_bgr
-        )
+            # Check if image is purely non-food
+            if non_food_detections and not food_detections:
+                prominent_non_food = max(non_food_detections, key=lambda x: x[1])
+                label = prominent_non_food[0].replace("_", " ").title()
+                conf_pct = int(prominent_non_food[1] * 100)
+                logger.info(f"[DETECTOR] Non-food detected: {label} ({conf_pct}%)")
+                return [], True, f"Detected non-food object ({label} - {conf_pct}%). Please upload a food item."
 
-        elapsed = (
-            time.perf_counter() - started_at
-        ) * 1000
+            if food_detections:
+                deduped = _deduplicate_candidates(food_detections, iou_thresh=0.45, max_candidates=10)
+                elapsed = (time.perf_counter() - started_at) * 1000
+                logger.info(f"[DETECTOR] YOLO Candidate objects: {len(deduped)} in {elapsed:.2f} ms")
+                for c in deduped:
+                    logger.info(f"[DETECTOR] Candidate {c['id']} | {c['display_name']} | conf={c['confidence']} | bbox={c['bbox']}")
+                return deduped, False, None
 
-        logger.info(
-            f"[DETECTOR] Detection completed | "
-            f"objects={len(candidates)} | "
-            f"time={elapsed:.2f} ms"
-        )
+            logger.info("[DETECTOR] YOLO detected no produce food classes; checking produce localization fallback.")
 
-        return candidates, False, None
+        except Exception as e:
+            logger.warning(f"[DETECTOR] YOLO inference error: {e}. Switching to produce localization fallback.")
 
-    except Exception as error:
+    # Lightweight produce localization fallback
+    logger.info("[DETECTOR] Running lightweight multi-object produce localization.")
+    candidates = find_salient_food_regions(image_bgr)
+    elapsed = (time.perf_counter() - started_at) * 1000
+    logger.info(f"[DETECTOR] Candidate objects: {len(candidates)} in {elapsed:.2f} ms")
+    for c in candidates:
+        logger.info(f"[DETECTOR] Candidate {c['id']} | {c.get('display_name', c.get('detected_label'))} | conf={c['confidence']} | bbox={c['bbox']}")
 
-        logger.exception(
-            f"[DETECTOR] Detection failed: {error}"
-        )
-
-        return [], True, "Unable to analyze image."
+    return candidates, False, None

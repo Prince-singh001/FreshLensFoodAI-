@@ -12,7 +12,7 @@ try:
     )
     from ml.quality import validate_image_for_inference
     from ml.detector import detect_objects_in_image
-    from ml.freshness import evaluate_freshness_for_item
+    from ml.freshness import evaluate_freshness_for_item, classify_food_crop
     from ml.loader import get_classes_metadata
     from utils.image_utils import (
         validate_uploaded_file,
@@ -29,7 +29,7 @@ except ImportError:
     )
     from backend.ml.quality import validate_image_for_inference
     from backend.ml.detector import detect_objects_in_image
-    from backend.ml.freshness import evaluate_freshness_for_item
+    from backend.ml.freshness import evaluate_freshness_for_item, classify_food_crop
     from backend.ml.loader import get_classes_metadata
     from backend.utils.image_utils import (
         validate_uploaded_file,
@@ -533,16 +533,43 @@ class PredictionService:
 
                 stage_started = time.perf_counter()
 
-                logger.info(
-                    f"[PREDICT] Starting freshness analysis | "
-                    f"object={index + 1}"
+                # Step 1: Food Type Classification using learned classifier
+                crop_key, crop_name, crop_cat, crop_conf = classify_food_crop(cropped)
+
+                if det_label and det_label in classes_meta:
+                    if crop_conf >= 0.85 and crop_key in classes_meta and crop_key != det_label:
+                        item_key = crop_key
+                        item_name = crop_name
+                        category = crop_cat
+                        id_conf = crop_conf
+                    else:
+                        item_key = det_label
+                        meta_entry = classes_meta[item_key]
+                        item_name = meta_entry.get("display_name", det_label.title())
+                        category = meta_entry.get("category", "Produce")
+                        id_conf = det_conf
+                else:
+                    item_key = crop_key
+                    item_name = crop_name
+                    category = crop_cat
+                    id_conf = crop_conf
+
+                self._log_stage(
+                    f"Object {index + 1} food classification",
+                    stage_started
                 )
 
-                freshness_result = (
-                    evaluate_freshness_for_item(
-                        cropped,
-                        item_key=None
-                    )
+                logger.info(
+                    f"[CLASSIFIER] Object {index + 1} -> "
+                    f"{item_name} {id_conf:.2f}"
+                )
+
+                stage_started = time.perf_counter()
+
+                # Step 2: Freshness Classification specifically for this food item
+                freshness_result = evaluate_freshness_for_item(
+                    cropped,
+                    item_key=item_key
                 )
 
                 self._log_stage(
@@ -550,25 +577,8 @@ class PredictionService:
                     stage_started
                 )
 
-                if not isinstance(
-                    freshness_result,
-                    dict
-                ):
+                if not isinstance(freshness_result, dict):
                     continue
-
-                item_key = freshness_result.get(
-                    "item_key"
-                )
-
-                item_name = freshness_result.get(
-                    "item",
-                    "Produce Item"
-                )
-
-                category = freshness_result.get(
-                    "category",
-                    "Produce"
-                )
 
                 freshness_status = freshness_result.get(
                     "freshness_status",
@@ -584,18 +594,13 @@ class PredictionService:
                 )
 
                 is_confident = bool(
-                    freshness_result.get(
-                        "is_confident",
-                        False
-                    )
+                    freshness_result.get("is_confident", False)
+                    or id_conf >= FOOD_CONFIDENCE_THRESHOLD
                 )
 
                 logger.info(
-                    f"[PREDICT] Object {index + 1} "
-                    f"classification | "
-                    f"item={item_name} | "
-                    f"condition={freshness_status} | "
-                    f"confidence={freshness_conf}"
+                    f"[FRESHNESS] Object {index + 1} -> "
+                    f"{freshness_status} {freshness_conf:.2f}"
                 )
 
                 if not is_confident:
@@ -625,14 +630,19 @@ class PredictionService:
 
                 obj_record = {
                     "id": len(processed_objects) + 1,
+                    "label": item_name,
                     "item": item_name,
                     "item_key": (
                         item_key
                         or "unknown"
                     ),
                     "category": category,
+                    "confidence": round(
+                        freshness_conf if freshness_conf > 0 else id_conf,
+                        4
+                    ),
                     "detection_confidence": round(
-                        det_conf,
+                        id_conf,
                         4
                     ),
                     "freshness": freshness_result.get(
@@ -643,6 +653,7 @@ class PredictionService:
                         freshness_conf,
                         4
                     ),
+                    "is_confident": is_confident,
                     "bbox": bbox,
                     "stability_warning": freshness_result.get(
                         "stability_warning",
@@ -793,13 +804,55 @@ class PredictionService:
                     f"but '{selected_category}' was selected."
                 )
 
+            total_fresh = sum(
+                1 for o in processed_objects
+                if o.get("freshness_status") == "Fresh"
+            )
+
+            total_spoiled = sum(
+                1 for o in processed_objects
+                if o.get("freshness_status") == "Spoiled"
+            )
+
+            total_low_conf = sum(
+                1 for o in processed_objects
+                if not o.get("is_confident", True)
+            )
+
+            total_cal = 0
+            total_carbs = 0.0
+            total_protein = 0.0
+            total_fiber = 0.0
+
+            for o in processed_objects:
+                nut = o.get("nutrition", {})
+                if nut:
+                    try:
+                        total_cal += float(nut.get("calories_per_100g") or 0)
+                        total_carbs += float(nut.get("carbs_g") or 0.0)
+                        total_protein += float(nut.get("protein_g") or 0.0)
+                        total_fiber += float(nut.get("fiber_g") or 0.0)
+                    except (ValueError, TypeError):
+                        pass
+
+            nutrition_summary = {
+                "total_items": len(processed_objects),
+                "estimated_calories": round(total_cal, 1),
+                "estimated_carbs_g": round(total_carbs, 1),
+                "estimated_protein_g": round(total_protein, 1),
+                "estimated_fiber_g": round(total_fiber, 1)
+            }
+
             summary = {
                 "total_objects": len(
                     processed_objects
                 ),
                 "fruits": total_fruits,
                 "vegetables": total_vegetables,
-                "food": total_foods
+                "food": total_foods,
+                "fresh": total_fresh,
+                "spoiled": total_spoiled,
+                "low_confidence": total_low_conf
             }
 
             response_data = {
@@ -825,6 +878,7 @@ class PredictionService:
                 ),
                 "objects": processed_objects,
                 "summary": summary,
+                "nutrition_summary": nutrition_summary,
                 "condition": primary_condition,
                 "confidence": primary_conf_pct,
                 "label": (
@@ -894,6 +948,8 @@ class PredictionService:
                     processed_objects
                 ),
                 "objects": processed_objects,
+                "summary": summary,
+                "nutrition_summary": nutrition_summary,
                 "warning": category_warning,
                 "stability_warning": primary_obj.get(
                     "stability_warning",
