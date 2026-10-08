@@ -25,7 +25,7 @@ except ImportError:
 
 
 prediction_executor = ThreadPoolExecutor(max_workers=1)
-PREDICTION_TIMEOUT_SECONDS = 90
+PREDICTION_TIMEOUT_SECONDS = 180
 
 
 @api_bp.route("/health", methods=["GET"])
