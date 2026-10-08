@@ -1,8 +1,7 @@
 from datetime import datetime
 import time
-from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeoutError
 
-from flask import Blueprint, request, jsonify
+from flask import request, jsonify
 
 from . import api_bp
 
@@ -10,26 +9,24 @@ try:
     from services.prediction_service import prediction_service
     from services.feedback_service import feedback_service
     from services.history_service import history_service
-    from services.chatbot_service import get_chatbot_response, process_agent_chat
+    from services.chatbot_service import process_agent_chat
     from ml.loader import get_classes_metadata
     from config import ENV
     from utils.logger import logger
+
 except ImportError:
     from backend.services.prediction_service import prediction_service
     from backend.services.feedback_service import feedback_service
     from backend.services.history_service import history_service
-    from backend.services.chatbot_service import get_chatbot_response, process_agent_chat
+    from backend.services.chatbot_service import process_agent_chat
     from backend.ml.loader import get_classes_metadata
     from backend.config import ENV
     from backend.utils.logger import logger
 
 
-prediction_executor = ThreadPoolExecutor(max_workers=1)
-PREDICTION_TIMEOUT_SECONDS = 180
-
-
 @api_bp.route("/health", methods=["GET"])
 def health_check():
+
     return jsonify({
         "success": True,
         "status": "healthy",
@@ -42,17 +39,30 @@ def health_check():
 
 @api_bp.route("/classes", methods=["GET"])
 def list_classes():
+
     try:
+
         meta = get_classes_metadata()
 
         return jsonify({
             "success": True,
-            "total_classes": len(meta.get("classes", {})),
-            "data": meta.get("classes", {})
+            "total_classes": len(
+                meta.get(
+                    "classes",
+                    {}
+                )
+            ),
+            "data": meta.get(
+                "classes",
+                {}
+            )
         }), 200
 
     except Exception as e:
-        logger.exception(f"Classes API error: {e}")
+
+        logger.exception(
+            f"Classes API error: {e}"
+        )
 
         return jsonify({
             "success": False,
@@ -65,26 +75,41 @@ def list_classes():
 
 @api_bp.route("/predict", methods=["POST"])
 def predict():
+
     request_started = time.perf_counter()
 
     try:
-        logger.info("Prediction request received.")
+
+        logger.info(
+            "Prediction request received."
+        )
 
         if "file" not in request.files:
-            logger.warning("Prediction request rejected: file field missing.")
+
+            logger.warning(
+                "Prediction request rejected: "
+                "file field missing."
+            )
 
             return jsonify({
                 "success": False,
                 "error": {
                     "code": "MISSING_FILE",
-                    "message": "No file part found in the request. Please provide an image file."
+                    "message": (
+                        "No file part found in the request. "
+                        "Please provide an image file."
+                    )
                 }
             }), 400
 
         file = request.files["file"]
 
         if file is None:
-            logger.warning("Prediction request rejected: empty file object.")
+
+            logger.warning(
+                "Prediction request rejected: "
+                "empty file object."
+            )
 
             return jsonify({
                 "success": False,
@@ -95,13 +120,19 @@ def predict():
             }), 400
 
         if not file.filename:
-            logger.warning("Prediction request rejected: filename missing.")
+
+            logger.warning(
+                "Prediction request rejected: "
+                "filename missing."
+            )
 
             return jsonify({
                 "success": False,
                 "error": {
                     "code": "EMPTY_FILENAME",
-                    "message": "Please provide a valid image file."
+                    "message": (
+                        "Please provide a valid image file."
+                    )
                 }
             }), 400
 
@@ -111,43 +142,25 @@ def predict():
         ).strip()
 
         logger.info(
-            f"Prediction started | filename={file.filename} | "
+            f"Prediction started | "
+            f"filename={file.filename} | "
             f"category={selected_category}"
         )
 
-        prediction_future = prediction_executor.submit(
-            prediction_service.process_image_upload,
+        result = prediction_service.process_image_upload(
             file,
             selected_category=selected_category
         )
 
-        try:
-            result = prediction_future.result(
-                timeout=PREDICTION_TIMEOUT_SECONDS
-            )
-
-        except FutureTimeoutError:
-            elapsed = time.perf_counter() - request_started
-
-            logger.error(
-                f"Prediction timeout after {elapsed:.2f}s | "
-                f"filename={file.filename}"
-            )
-
-            return jsonify({
-                "success": False,
-                "error": {
-                    "code": "PREDICTION_TIMEOUT",
-                    "message": "Food analysis took too long. Please try another image."
-                },
-                "elapsed_time_ms": round(elapsed * 1000, 2)
-            }), 504
-
-        elapsed = time.perf_counter() - request_started
+        elapsed = (
+            time.perf_counter()
+            - request_started
+        )
 
         if result is None:
+
             logger.error(
-                f"Prediction service returned None | "
+                "Prediction service returned None | "
                 f"elapsed={elapsed:.2f}s"
             )
 
@@ -155,32 +168,49 @@ def predict():
                 "success": False,
                 "error": {
                     "code": "EMPTY_PREDICTION_RESULT",
-                    "message": "The prediction service returned no result."
+                    "message": (
+                        "The prediction service "
+                        "returned no result."
+                    )
                 },
-                "elapsed_time_ms": round(elapsed * 1000, 2)
+                "elapsed_time_ms": round(
+                    elapsed * 1000,
+                    2
+                )
             }), 500
 
         if not isinstance(result, dict):
+
             logger.error(
-                f"Invalid prediction result type: {type(result).__name__}"
+                "Invalid prediction result type: "
+                f"{type(result).__name__}"
             )
 
             return jsonify({
                 "success": False,
                 "error": {
                     "code": "INVALID_PREDICTION_RESULT",
-                    "message": "The prediction service returned an invalid response."
+                    "message": (
+                        "The prediction service "
+                        "returned an invalid response."
+                    )
                 },
-                "elapsed_time_ms": round(elapsed * 1000, 2)
+                "elapsed_time_ms": round(
+                    elapsed * 1000,
+                    2
+                )
             }), 500
 
         result.setdefault(
             "inference_time_ms",
-            round(elapsed * 1000, 2)
+            round(
+                elapsed * 1000,
+                2
+            )
         )
 
         logger.info(
-            f"Prediction completed successfully | "
+            f"Prediction completed | "
             f"elapsed={elapsed:.2f}s | "
             f"success={result.get('success')} | "
             f"status={result.get('status')}"
@@ -195,62 +225,115 @@ def predict():
             )
         )
 
-        status_code = 200 if is_valid_inference else 422
+        status_code = (
+            200
+            if is_valid_inference
+            else 422
+        )
 
-        return jsonify(result), status_code
+        return jsonify(
+            result
+        ), status_code
 
     except Exception as e:
-        elapsed = time.perf_counter() - request_started
+
+        elapsed = (
+            time.perf_counter()
+            - request_started
+        )
 
         logger.exception(
-            f"Prediction API error after {elapsed:.2f}s: {e}"
+            f"Prediction API error after "
+            f"{elapsed:.2f}s: {e}"
         )
 
         return jsonify({
             "success": False,
             "error": {
                 "code": "PREDICTION_ERROR",
-                "message": "Failed to analyze the uploaded image."
+                "message": (
+                    "Failed to analyze the uploaded image."
+                )
             },
-            "elapsed_time_ms": round(elapsed * 1000, 2)
+            "elapsed_time_ms": round(
+                elapsed * 1000,
+                2
+            )
         }), 500
 
 
 @api_bp.route("/feedback", methods=["POST"])
 def submit_feedback():
+
     try:
-        data = request.get_json(silent=True) or request.form.to_dict()
+
+        data = (
+            request.get_json(
+                silent=True
+            )
+            or request.form.to_dict()
+        )
 
         if not data:
+
             return jsonify({
                 "success": False,
                 "error": {
                     "code": "INVALID_BODY",
-                    "message": "Request body must be valid JSON or form data."
+                    "message": (
+                        "Request body must be valid "
+                        "JSON or form data."
+                    )
                 }
             }), 400
 
-        image_url = data.get("image_url", "").strip()
-        label = data.get("label", "").strip()
-        predicted_class = data.get("predicted_class", label).strip()
-        correct_class = data.get("correct_class", label).strip()
-        notes = data.get("notes", "").strip()
+        image_url = data.get(
+            "image_url",
+            ""
+        ).strip()
+
+        label = data.get(
+            "label",
+            ""
+        ).strip()
+
+        predicted_class = data.get(
+            "predicted_class",
+            label
+        ).strip()
+
+        correct_class = data.get(
+            "correct_class",
+            label
+        ).strip()
+
+        notes = data.get(
+            "notes",
+            ""
+        ).strip()
 
         if not image_url:
+
             return jsonify({
                 "success": False,
                 "error": {
                     "code": "MISSING_IMAGE_URL",
-                    "message": "Field 'image_url' is required."
+                    "message": (
+                        "Field 'image_url' is required."
+                    )
                 }
             }), 400
 
         if not correct_class:
+
             return jsonify({
                 "success": False,
                 "error": {
                     "code": "MISSING_CORRECT_CLASS",
-                    "message": "Field 'correct_class' or 'label' is required."
+                    "message": (
+                        "Field 'correct_class' "
+                        "or 'label' is required."
+                    )
                 }
             }), 400
 
@@ -261,29 +344,59 @@ def submit_feedback():
             user_notes=notes
         )
 
-        return jsonify(res), 200
+        return jsonify(
+            res
+        ), 200
 
     except Exception as e:
-        logger.exception(f"Feedback API error: {e}")
+
+        logger.exception(
+            f"Feedback API error: {e}"
+        )
 
         return jsonify({
             "success": False,
             "error": {
                 "code": "FEEDBACK_ERROR",
-                "message": "Failed to submit feedback."
+                "message": (
+                    "Failed to submit feedback."
+                )
             }
         }), 500
 
 
 @api_bp.route("/history", methods=["GET"])
 def get_history():
-    try:
-        limit = min(int(request.args.get("limit", 50)), 100)
-        offset = max(int(request.args.get("offset", 0)), 0)
-    except ValueError:
-        limit, offset = 50, 0
 
     try:
+
+        limit = min(
+            int(
+                request.args.get(
+                    "limit",
+                    50
+                )
+            ),
+            100
+        )
+
+        offset = max(
+            int(
+                request.args.get(
+                    "offset",
+                    0
+                )
+            ),
+            0
+        )
+
+    except ValueError:
+
+        limit = 50
+        offset = 0
+
+    try:
+
         records = history_service.get_all(
             limit=limit,
             offset=offset
@@ -300,40 +413,70 @@ def get_history():
         }), 200
 
     except Exception as e:
-        logger.exception(f"History API error: {e}")
+
+        logger.exception(
+            f"History API error: {e}"
+        )
 
         return jsonify({
             "success": False,
             "error": {
                 "code": "HISTORY_ERROR",
-                "message": "Failed to load scan history."
+                "message": (
+                    "Failed to load scan history."
+                )
             }
         }), 500
 
 
 @api_bp.route("/history", methods=["DELETE"])
 def delete_history():
+
     try:
-        record_id = request.args.get("id")
+
+        record_id = request.args.get(
+            "id"
+        )
 
         if not record_id:
-            body = request.get_json(silent=True) or {}
-            record_id = body.get("id")
+
+            body = (
+                request.get_json(
+                    silent=True
+                )
+                or {}
+            )
+
+            record_id = body.get(
+                "id"
+            )
 
         if record_id:
-            deleted = history_service.delete_by_id(record_id)
+
+            deleted = (
+                history_service.delete_by_id(
+                    record_id
+                )
+            )
 
             if deleted:
+
                 return jsonify({
                     "success": True,
-                    "message": f"Scan record {record_id} deleted successfully."
+                    "message": (
+                        f"Scan record {record_id} "
+                        "deleted successfully."
+                    )
                 }), 200
 
             return jsonify({
                 "success": False,
                 "error": {
                     "code": "NOT_FOUND",
-                    "message": f"Record with ID '{record_id}' not found."
+                    "message": (
+                        f"Record with ID "
+                        f"'{record_id}' not found."
+                    )
                 }
             }), 404
 
@@ -341,40 +484,71 @@ def delete_history():
 
         return jsonify({
             "success": True,
-            "message": "All scan history cleared successfully."
+            "message": (
+                "All scan history "
+                "cleared successfully."
+            )
         }), 200
 
     except Exception as e:
-        logger.exception(f"Delete history API error: {e}")
+
+        logger.exception(
+            f"Delete history API error: {e}"
+        )
 
         return jsonify({
             "success": False,
             "error": {
                 "code": "HISTORY_DELETE_ERROR",
-                "message": "Failed to delete scan history."
+                "message": (
+                    "Failed to delete scan history."
+                )
             }
         }), 500
 
 
 @api_bp.route("/chat", methods=["POST"])
 def chat():
-    data = request.get_json(silent=True) or {}
 
-    message = data.get("message", "").strip()
-    conversation_id = data.get("conversation_id")
-    language = data.get("language", "en")
-    scan_context = data.get("scan_context")
+    data = (
+        request.get_json(
+            silent=True
+        )
+        or {}
+    )
+
+    message = data.get(
+        "message",
+        ""
+    ).strip()
+
+    conversation_id = data.get(
+        "conversation_id"
+    )
+
+    language = data.get(
+        "language",
+        "en"
+    )
+
+    scan_context = data.get(
+        "scan_context"
+    )
 
     if not message:
+
         return jsonify({
             "success": False,
             "error": {
                 "code": "MISSING_MESSAGE",
-                "message": "Field 'message' is required."
+                "message": (
+                    "Field 'message' is required."
+                )
             }
         }), 400
 
     try:
+
         agent_res = process_agent_chat(
             message=message,
             conversation_id=conversation_id,
@@ -384,56 +558,115 @@ def chat():
 
         return jsonify({
             "success": True,
-            "conversation_id": agent_res.get("conversation_id"),
-            "language": agent_res.get("language"),
-            "response": agent_res.get("answer"),
-            "answer": agent_res.get("answer"),
-            "tool_used": agent_res.get("tool_used"),
-            "sources": agent_res.get("sources", [])
+            "conversation_id": agent_res.get(
+                "conversation_id"
+            ),
+            "language": agent_res.get(
+                "language"
+            ),
+            "response": agent_res.get(
+                "answer"
+            ),
+            "answer": agent_res.get(
+                "answer"
+            ),
+            "tool_used": agent_res.get(
+                "tool_used"
+            ),
+            "sources": agent_res.get(
+                "sources",
+                []
+            )
         }), 200
 
     except Exception as e:
-        logger.exception(f"Chatbot execution error: {e}")
+
+        logger.exception(
+            f"Chatbot execution error: {e}"
+        )
 
         return jsonify({
             "success": False,
             "error": {
                 "code": "CHAT_ERROR",
-                "message": "Failed to process chat query."
+                "message": (
+                    "Failed to process chat query."
+                )
             }
         }), 500
 
 
-@api_bp.route("/food/<food_name>", methods=["GET"])
+@api_bp.route(
+    "/food/<food_name>",
+    methods=["GET"]
+)
 def get_food_info(food_name):
+
     try:
-        metadata = get_classes_metadata().get("classes", {})
-        query = food_name.lower().strip()
+
+        metadata = (
+            get_classes_metadata()
+            .get(
+                "classes",
+                {}
+            )
+        )
+
+        query = (
+            food_name
+            .lower()
+            .strip()
+        )
 
         for key, data in metadata.items():
-            aliases = data.get("detector_aliases", []) + [
-                key,
-                data.get("display_name", "").lower()
-            ]
+
+            aliases = (
+                data.get(
+                    "detector_aliases",
+                    []
+                )
+                + [
+                    key,
+                    data.get(
+                        "display_name",
+                        ""
+                    ).lower()
+                ]
+            )
 
             if any(
-                alias == query or
-                alias in query or
-                query in alias
+                alias == query
+                or alias in query
+                or query in alias
                 for alias in aliases
                 if alias
             ):
+
                 return jsonify({
                     "success": True,
                     "data": {
                         "key": key,
-                        "name": data.get("display_name"),
-                        "display_name": data.get("display_name"),
-                        "category": data.get("category"),
-                        "freshness_supported": data.get("freshness_supported"),
-                        "storage_tip": data.get("storage_tip"),
-                        "safety_guideline": data.get("safety_guideline"),
-                        "nutrition": data.get("nutrition")
+                        "name": data.get(
+                            "display_name"
+                        ),
+                        "display_name": data.get(
+                            "display_name"
+                        ),
+                        "category": data.get(
+                            "category"
+                        ),
+                        "freshness_supported": data.get(
+                            "freshness_supported"
+                        ),
+                        "storage_tip": data.get(
+                            "storage_tip"
+                        ),
+                        "safety_guideline": data.get(
+                            "safety_guideline"
+                        ),
+                        "nutrition": data.get(
+                            "nutrition"
+                        )
                     }
                 }), 200
 
@@ -441,17 +674,25 @@ def get_food_info(food_name):
             "success": False,
             "error": {
                 "code": "NOT_FOUND",
-                "message": f"Food item '{food_name}' is not currently in the catalog."
+                "message": (
+                    f"Food item '{food_name}' "
+                    "is not currently in the catalog."
+                )
             }
         }), 404
 
     except Exception as e:
-        logger.exception(f"Food information API error: {e}")
+
+        logger.exception(
+            f"Food information API error: {e}"
+        )
 
         return jsonify({
             "success": False,
             "error": {
                 "code": "FOOD_INFO_ERROR",
-                "message": "Failed to load food information."
+                "message": (
+                    "Failed to load food information."
+                )
             }
         }), 500

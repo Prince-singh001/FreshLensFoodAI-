@@ -1,113 +1,319 @@
-import os
+import threading
+import time
 import cv2
 import numpy as np
-from pathlib import Path
-from typing import Tuple, Dict, Any, Optional
 
 try:
-    from config import ROOT_DIR, PRODUCTION_MODEL_DIR, USE_TFLITE, IMG_SIZE
+    from config import PRODUCTION_MODEL_DIR, USE_TFLITE
     from utils.logger import logger
 except ImportError:
-    from backend.config import ROOT_DIR, PRODUCTION_MODEL_DIR, USE_TFLITE, IMG_SIZE
+    from backend.config import PRODUCTION_MODEL_DIR, USE_TFLITE
     from backend.utils.logger import logger
 
-# Food vs Non-Food threshold
+
 FOOD_VALIDATION_THRESHOLD = 0.60
 
 _validator_tflite_interpreter = None
 _validator_keras_model = None
 
-def get_food_validator_model():
-    """
-    Singleton loader for binary Food vs Non-Food Validator model.
-    Supports both TFLite and Keras.
-    """
-    global _validator_tflite_interpreter, _validator_keras_model
-    tflite_path = PRODUCTION_MODEL_DIR / "food_validator_model.tflite"
-    h5_path = PRODUCTION_MODEL_DIR / "food_validator_model.h5"
+_validator_lock = threading.RLock()
 
-    if USE_TFLITE or not h5_path.exists():
-        if _validator_tflite_interpreter is None and tflite_path.exists():
+
+def get_food_validator_model():
+
+    global _validator_tflite_interpreter
+    global _validator_keras_model
+
+    with _validator_lock:
+
+        tflite_path = (
+            PRODUCTION_MODEL_DIR
+            / "food_validator_model.tflite"
+        )
+
+        h5_path = (
+            PRODUCTION_MODEL_DIR
+            / "food_validator_model.h5"
+        )
+
+        if USE_TFLITE or not h5_path.exists():
+
+            if (
+                _validator_tflite_interpreter is None
+                and tflite_path.exists()
+            ):
+
+                try:
+
+                    import tensorflow as tf
+
+                    logger.info(
+                        "[VALIDATOR] Loading Food Validator TFLite model..."
+                    )
+
+                    _validator_tflite_interpreter = (
+                        tf.lite.Interpreter(
+                            model_path=str(tflite_path),
+                            num_threads=1
+                        )
+                    )
+
+                    _validator_tflite_interpreter.allocate_tensors()
+
+                    logger.info(
+                        "[VALIDATOR] Food Validator TFLite loaded successfully."
+                    )
+
+                except Exception as e:
+
+                    logger.exception(
+                        f"[VALIDATOR] TFLite load failed: {e}"
+                    )
+
+                    _validator_tflite_interpreter = None
+
+            return _validator_tflite_interpreter
+
+        if (
+            _validator_keras_model is None
+            and h5_path.exists()
+        ):
+
             try:
+
                 import tensorflow as tf
-                _validator_tflite_interpreter = tf.lite.Interpreter(model_path=str(tflite_path))
-                _validator_tflite_interpreter.allocate_tensors()
-                logger.info(f"Loaded Food Validator TFLite model from {tflite_path}")
+
+                logger.info(
+                    "[VALIDATOR] Loading Food Validator Keras model..."
+                )
+
+                _validator_keras_model = (
+                    tf.keras.models.load_model(
+                        str(h5_path),
+                        compile=False
+                    )
+                )
+
+                logger.info(
+                    "[VALIDATOR] Food Validator Keras loaded successfully."
+                )
+
             except Exception as e:
-                logger.error(f"Failed to load Food Validator TFLite model: {e}")
-        return _validator_tflite_interpreter
-    else:
-        if _validator_keras_model is None and h5_path.exists():
-            try:
-                import tensorflow as tf
-                _validator_keras_model = tf.keras.models.load_model(str(h5_path), compile=False)
-                logger.info(f"Loaded Food Validator Keras model from {h5_path}")
-            except Exception as e:
-                logger.error(f"Failed to load Food Validator Keras model: {e}")
+
+                logger.exception(
+                    f"[VALIDATOR] Keras load failed: {e}"
+                )
+
+                _validator_keras_model = None
+
         return _validator_keras_model
 
 
-def preprocess_for_validator(image_bgr: np.ndarray, target_size: int = 224) -> np.ndarray:
-    """
-    Preprocess image for Food Validator model:
-    Convert BGR -> RGB, resize to target_size x target_size, scale to [0, 1].
-    """
-    image_rgb = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2RGB)
-    resized = cv2.resize(image_rgb, (target_size, target_size), interpolation=cv2.INTER_AREA)
-    normalized = resized.astype(np.float32) / 255.0
-    return np.expand_dims(normalized, axis=0)
+def preprocess_for_validator(
+    image_bgr: np.ndarray,
+    target_size: int = 224
+) -> np.ndarray:
+
+    if image_bgr is None:
+        raise ValueError(
+            "Invalid image."
+        )
+
+    if image_bgr.size == 0:
+        raise ValueError(
+            "Empty image."
+        )
+
+    image_rgb = cv2.cvtColor(
+        image_bgr,
+        cv2.COLOR_BGR2RGB
+    )
+
+    resized = cv2.resize(
+        image_rgb,
+        (
+            target_size,
+            target_size
+        ),
+        interpolation=cv2.INTER_AREA
+    )
+
+    normalized = (
+        resized.astype(
+            np.float32
+        )
+        / 255.0
+    )
+
+    return np.expand_dims(
+        normalized,
+        axis=0
+    )
 
 
 def validate_food_presence(
-    image_bgr: np.ndarray,
-    threshold: float = FOOD_VALIDATION_THRESHOLD
-) -> Tuple[bool, float, Dict[str, Any]]:
-    """
-    Validates whether the provided image or crop contains real food items.
-    
-    Returns:
-        (is_food, food_confidence, details_dict)
-        
-    food_confidence: float in range [0.0, 1.0] where 1.0 = definitely food.
-    """
-    model = get_food_validator_model()
-    
-    if model is None:
-        # Fallback if validator weights not yet loaded: log warning
-        logger.warning("Food validator model not loaded; allowing pipeline fallback")
-        return True, 0.70, {"status": "model_unavailable", "p_food": 0.70}
+    image_bgr,
+    threshold=FOOD_VALIDATION_THRESHOLD
+):
 
-    input_tensor = preprocess_for_validator(image_bgr, target_size=IMG_SIZE)
+    started = time.perf_counter()
 
     try:
-        if hasattr(model, "get_input_details"):
-            # TFLite interpreter
-            input_details = model.get_input_details()
-            output_details = model.get_output_details()
-            model.set_tensor(input_details[0]['index'], input_tensor)
-            model.invoke()
-            output = model.get_tensor(output_details[0]['index'])
-            raw_prob = float(output[0][0])
-        else:
-            # Direct tensor call is 100x faster than model.predict on CPU
-            output = model(input_tensor, training=False)
-            raw_prob = float(output.numpy()[0][0])
 
-        # Note: class indices: 'food': 0, 'non_food': 1
-        # Thus sigmoid output closer to 0 is food, closer to 1 is non_food
-        # Or if alphabetical, food=0, non_food=1:
-        # p_food = 1.0 - raw_prob
-        p_food = 1.0 - raw_prob
+        model = get_food_validator_model()
+
+        if model is None:
+
+            logger.warning(
+                "[VALIDATOR] Food validator unavailable. "
+                "Using safe fallback."
+            )
+
+            return (
+                True,
+                0.70,
+                0.30
+            )
+
+        input_tensor = preprocess_for_validator(
+            image_bgr
+        )
+
+        with _validator_lock:
+
+            if hasattr(
+                model,
+                "get_input_details"
+            ):
+
+                input_details = (
+                    model.get_input_details()
+                )
+
+                output_details = (
+                    model.get_output_details()
+                )
+
+                if not input_details:
+                    raise RuntimeError(
+                        "Validator has no input tensor."
+                    )
+
+                if not output_details:
+                    raise RuntimeError(
+                        "Validator has no output tensor."
+                    )
+
+                input_info = input_details[0]
+
+                target_dtype = input_info.get(
+                    "dtype",
+                    np.float32
+                )
+
+                if target_dtype != np.float32:
+
+                    scale, zero_point = (
+                        input_info.get(
+                            "quantization",
+                            (0.0, 0)
+                        )
+                    )
+
+                    if scale and scale > 0:
+
+                        input_tensor = (
+                            input_tensor
+                            / float(scale)
+                        ) + float(zero_point)
+
+                    input_tensor = input_tensor.astype(
+                        target_dtype
+                    )
+
+                else:
+
+                    input_tensor = input_tensor.astype(
+                        np.float32
+                    )
+
+                model.set_tensor(
+                    input_info["index"],
+                    input_tensor
+                )
+
+                model.invoke()
+
+                output_info = output_details[0]
+
+                output = model.get_tensor(
+                    output_info["index"]
+                )
+
+                raw_prob = float(
+                    np.asarray(output).reshape(-1)[0]
+                )
+
+            else:
+
+                output = model(
+                    input_tensor,
+                    training=False
+                )
+
+                raw_prob = float(
+                    output.numpy()
+                    .reshape(-1)[0]
+                )
+
+        raw_prob = float(
+            np.clip(
+                raw_prob,
+                0.0,
+                1.0
+            )
+        )
+
         p_non_food = raw_prob
+        p_food = 1.0 - raw_prob
 
-        is_food = bool(p_food >= threshold)
+        is_food = bool(
+            p_food >= threshold
+        )
 
-        return is_food, p_food, {
-            "p_food": round(p_food, 4),
-            "p_non_food": round(p_non_food, 4),
-            "is_food": is_food,
-            "threshold": threshold
-        }
+        elapsed = (
+            time.perf_counter()
+            - started
+        ) * 1000
+
+        logger.info(
+            "[VALIDATOR] Completed | "
+            f"food={is_food} | "
+            f"p_food={p_food:.4f} | "
+            f"p_non_food={p_non_food:.4f} | "
+            f"time={elapsed:.2f}ms"
+        )
+
+        return (
+            is_food,
+            p_food,
+            p_non_food
+        )
+
     except Exception as e:
-        logger.error(f"Error during food validation inference: {e}")
-        return False, 0.0, {"error": str(e), "is_food": False}
+
+        elapsed = (
+            time.perf_counter()
+            - started
+        ) * 1000
+
+        logger.exception(
+            "[VALIDATOR] Inference failed | "
+            f"time={elapsed:.2f}ms | error={e}"
+        )
+
+        return (
+            False,
+            0.0,
+            1.0
+        )
