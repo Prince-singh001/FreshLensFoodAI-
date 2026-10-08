@@ -293,12 +293,12 @@ def draw_annotations(
             label_text = (
                 f"{item_name} | "
                 f"{condition} "
-                f"({int(det_conf * 100)}%)"
+                f"({int(det_conf * 95)}%)"
             )
         else:
             label_text = (
                 f"{item_name} "
-                f"({int(det_conf * 100)}%)"
+                f"({int(det_conf * 83)}%)"
             )
 
         font = cv2.FONT_HERSHEY_SIMPLEX

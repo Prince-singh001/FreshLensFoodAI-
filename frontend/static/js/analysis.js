@@ -318,13 +318,13 @@ document.addEventListener("DOMContentLoaded", async () => {
 
         <div class="food-items-grid">
           ${foodItems.map((obj, idx) => {
-            const cond = obj.freshness_status || obj.freshness || "Not Available";
-            const isFresh = cond === "Fresh";
-            const badgeClass = isFresh ? "fresh" : "spoiled";
-            const badgeIcon = isFresh ? "✓ Fresh" : "⚠️ Spoiled";
-            const confVal = Math.round((obj.confidence || obj.freshness_confidence || 0) * 100);
+        const cond = obj.freshness_status || obj.freshness || "Not Available";
+        const isFresh = cond === "Fresh";
+        const badgeClass = isFresh ? "fresh" : "spoiled";
+        const badgeIcon = isFresh ? "✓ Fresh" : "⚠️ Spoiled";
+        const confVal = Math.round((obj.confidence || obj.freshness_confidence || 0) * 100);
 
-            return `
+        return `
               <div class="individual-food-card">
                 <div class="ind-card-top">
                   <div class="ind-card-title">
@@ -369,7 +369,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                 ` : ''}
               </div>
             `;
-          }).join("")}
+      }).join("")}
         </div>
       `;
 
