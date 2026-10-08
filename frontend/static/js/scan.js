@@ -67,6 +67,31 @@ document.addEventListener("DOMContentLoaded", () => {
   );
   const feedbackResultMsg = document.getElementById("feedbackResultMsg");
 
+  // Center Vision & Dashboard Elements
+  const visionEmptyState = document.getElementById("visionEmptyState");
+  const visionPreviewWrap = document.getElementById("visionPreviewWrap");
+  const visionOriginalImg = document.getElementById("visionOriginalImg");
+  const visionStatusBadge = document.getElementById("visionStatusBadge");
+  const resultStatusBadge = document.getElementById("resultStatusBadge");
+  const resultPlaceholder = document.getElementById("resultPlaceholder");
+  const activeResultView = document.getElementById("activeResultView");
+  const primaryFoodName = document.getElementById("primaryFoodName");
+  const primaryCategoryPill = document.getElementById("primaryCategoryPill");
+  const primaryFreshnessBadge = document.getElementById("primaryFreshnessBadge");
+  const primaryFreshnessLabel = document.getElementById("primaryFreshnessLabel");
+  const primaryConfidenceValue = document.getElementById("primaryConfidenceValue");
+  const primaryConfBarFill = document.getElementById("primaryConfBarFill");
+  const primaryConditionLevel = document.getElementById("primaryConditionLevel");
+  const primaryInferenceSpeed = document.getElementById("primaryInferenceSpeed");
+  const aiSummaryBox = document.getElementById("aiSummaryBox");
+  const aiSummaryText = document.getElementById("aiSummaryText");
+  const primaryNutritionStrip = document.getElementById("primaryNutritionStrip");
+  const primaryCaloriesVal = document.getElementById("primaryCaloriesVal");
+  const primaryCarbsVal = document.getElementById("primaryCarbsVal");
+  const primaryProteinVal = document.getElementById("primaryProteinVal");
+  const primaryGuidanceAccordion = document.getElementById("primaryGuidanceAccordion");
+  const primaryGuidanceContent = document.getElementById("primaryGuidanceContent");
+
   let localStream = null;
   let currentFacingMode = "environment";
   let activeCategory = "All";
@@ -704,19 +729,43 @@ document.addEventListener("DOMContentLoaded", () => {
   function displayImagePreview(dataUrl, file) {
     if (previewBox) {
       previewBox.innerHTML = `
-        <img
-          src="${dataUrl}"
-          alt="Food Preview"
-          style="max-height:280px; max-width:100%; border-radius:12px; margin:0 auto; display:block; box-shadow:var(--shadow-sm);"
-        />
-        <p style="font-size:0.8rem; color:var(--muted); margin-top:8px; text-align:center;">
-          ${escapeHtml(file?.name || "Selected Food Image")}
-        </p>
+        <div style="display:flex; flex-direction:column; align-items:center; gap:6px;">
+          <img
+            src="${dataUrl}"
+            alt="Food Preview"
+            style="max-height:100px; max-width:100%; border-radius:8px; object-fit:cover; box-shadow:0 2px 10px rgba(0,0,0,0.35);"
+          />
+          <span style="font-size:0.75rem; color:var(--text-secondary); max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+            ${escapeHtml(file?.name || "Selected Food Photo")}
+          </span>
+        </div>
       `;
     }
 
     if (previewActionsBar) {
       previewActionsBar.style.display = "flex";
+    }
+
+    // Synchronize Column 2 (Center AI Vision Viewport)
+    if (visionOriginalImg) {
+      visionOriginalImg.src = dataUrl;
+    }
+    if (visionPreviewWrap) {
+      visionPreviewWrap.style.display = "flex";
+    }
+    if (annotatedImageBox) {
+      annotatedImageBox.style.display = "none";
+    }
+    if (visionEmptyState) {
+      visionEmptyState.style.display = "none";
+    }
+    if (visionStatusBadge) {
+      visionStatusBadge.className = "vision-status-badge";
+      const label = visionStatusBadge.querySelector(".status-indicator-label");
+      if (label) label.textContent = "Image Ready";
+    }
+    if (resultStatusBadge) {
+      resultStatusBadge.textContent = "Ready to Analyze";
     }
   }
 
@@ -728,28 +777,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   if (removeImageBtn) {
     removeImageBtn.addEventListener("click", () => {
-      if (foodImage) {
-        foodImage.value = "";
-      }
-
-      if (previewBox) {
-        previewBox.innerHTML = `
-            <span class="upload-icon">📷</span>
-            <h3 style="font-size:1.1rem; margin-bottom:4px;">Drop your food image here</h3>
-            <p style="color:var(--muted); font-size:0.85rem;">
-              or choose an image from your device (JPG, PNG, WEBP)
-            </p>
-          `;
-      }
-
-      if (previewActionsBar) {
-        previewActionsBar.style.display = "none";
-      }
-
-      if (qualityToast) {
-        qualityToast.style.display = "none";
-      }
-
+      resetUploadUI();
       resetResultsView();
     });
   }
@@ -906,23 +934,31 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     if (scanInferenceTime) {
-      scanInferenceTime.textContent = "";
+      scanInferenceTime.textContent = "--";
+    }
+
+    if (activeResultView) {
+      activeResultView.style.display = "none";
+    }
+
+    if (primaryNutritionStrip) {
+      primaryNutritionStrip.style.display = "none";
+    }
+
+    if (primaryGuidanceAccordion) {
+      primaryGuidanceAccordion.style.display = "none";
+    }
+
+    if (resultPlaceholder) {
+      resultPlaceholder.style.display = "flex";
+    }
+
+    if (resultStatusBadge) {
+      resultStatusBadge.textContent = "Awaiting Scan";
     }
 
     if (multiObjectsContainer) {
-      multiObjectsContainer.innerHTML = `
-        <div id="resultPlaceholder" style="color:var(--muted); text-align:center; padding:40px 16px;">
-          <span style="font-size:2.5rem; display:block; margin-bottom:10px;">🥗</span>
-          <h3 style="font-size:1.1rem; color:var(--text); margin-bottom:4px;">
-            No Scan Yet
-          </h3>
-          <p style="font-size:0.875rem; max-width:320px; margin:0 auto;">
-            Capture or upload a food image and click
-            <strong>Analyze Food</strong>
-            to view detected items and freshness assessments.
-          </p>
-        </div>
-      `;
+      multiObjectsContainer.innerHTML = "";
     }
   }
 
@@ -933,13 +969,23 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (previewBox) {
       previewBox.innerHTML = `
-        <span class="upload-icon">📷</span>
-        <h3 style="font-size:1.1rem; margin-bottom:4px;">
-          Drop your food image here
-        </h3>
-        <p style="color:var(--muted); font-size:0.85rem;">
-          or choose an image from your device (JPG, PNG, WEBP)
-        </p>
+        <div class="upload-icon-circle">
+          <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"></path>
+            <path d="M12 12v9"></path>
+            <path d="m8 16 4-4 4 4"></path>
+          </svg>
+        </div>
+        <div class="dropzone-text-group">
+          <span class="dropzone-main-text">Drag & drop food image here</span>
+          <span class="dropzone-sub-text">or <strong class="browse-link">browse files</strong> from device</span>
+        </div>
+        <div class="format-pill-row">
+          <span class="format-pill">JPG</span>
+          <span class="format-pill">PNG</span>
+          <span class="format-pill">WEBP</span>
+          <span class="format-pill">Max 16MB</span>
+        </div>
       `;
     }
 
@@ -949,6 +995,28 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (qualityToast) {
       qualityToast.style.display = "none";
+    }
+
+    if (visionPreviewWrap) {
+      visionPreviewWrap.style.display = "none";
+    }
+
+    if (annotatedImageBox) {
+      annotatedImageBox.style.display = "none";
+    }
+
+    if (visionEmptyState) {
+      visionEmptyState.style.display = "flex";
+    }
+
+    if (visionStatusBadge) {
+      visionStatusBadge.className = "vision-status-badge";
+      const label = visionStatusBadge.querySelector(".status-indicator-label");
+      if (label) label.textContent = "Standby";
+    }
+
+    if (resultStatusBadge) {
+      resultStatusBadge.textContent = "Awaiting Scan";
     }
   }
 
@@ -1121,6 +1189,16 @@ document.addEventListener("DOMContentLoaded", () => {
     resetResultsView();
 
     isAnalyzing = true;
+
+    if (visionStatusBadge) {
+      visionStatusBadge.className = "vision-status-badge scanning";
+      const label = visionStatusBadge.querySelector(".status-indicator-label");
+      if (label) label.textContent = "Analyzing...";
+    }
+
+    if (resultStatusBadge) {
+      resultStatusBadge.textContent = "Processing...";
+    }
 
     if (scanNow) {
       scanNow.disabled = true;
@@ -1520,12 +1598,43 @@ document.addEventListener("DOMContentLoaded", () => {
       feedbackSection.style.display = "none";
     }
 
-    if (
+    if (activeResultView) {
+      activeResultView.style.display = "none";
+    }
+
+    if (resultPlaceholder) {
+      resultPlaceholder.style.display = "none";
+    }
+
+    if (visionStatusBadge) {
+      visionStatusBadge.className = "vision-status-badge";
+      const label = visionStatusBadge.querySelector(".status-indicator-label");
+      if (label) label.textContent = "Notice";
+    }
+
+    if (resultStatusBadge) {
+      resultStatusBadge.textContent = "Notice";
+    }
+
+    if (status === "poor_image_quality") {
+      if (scanErrorCode) {
+        scanErrorCode.textContent = "Poor Image Quality";
+      }
+
+      if (scanErrorMessage) {
+        scanErrorMessage.textContent =
+          "Image quality is too low for reliable analysis. Please upload or capture a clearer food photo.";
+      }
+
+      if (scanErrorBox) {
+        scanErrorBox.style.display = "flex";
+      }
+    } else if (
       status === "prediction_timeout" ||
       status === "prediction_unavailable"
     ) {
       if (scanErrorCode) {
-        scanErrorCode.textContent = err.code || "PREDICTION_ERROR";
+        scanErrorCode.textContent = err.code || "Service Notice";
       }
 
       if (scanErrorMessage) {
@@ -1551,32 +1660,32 @@ document.addEventListener("DOMContentLoaded", () => {
         if (multiObjectsContainer) {
           multiObjectsContainer.innerHTML = `
             <div class="rejection-card no-food-card"
-              style="text-align:center; padding:36px 20px; background:var(--bg-alt); border-radius:var(--radius-lg); border:1px solid var(--border);">
+              style="text-align:center; padding:28px 16px; background:var(--bg-alt); border-radius:12px; border:1px solid var(--border);">
 
-              <span style="font-size:3rem; display:block; margin-bottom:12px;">🔍</span>
+              <span style="font-size:2.5rem; display:block; margin-bottom:8px;">🔍</span>
 
-              <h3 style="font-size:1.35rem; font-weight:800; color:var(--text); margin-bottom:8px;">
+              <h3 style="font-size:1.15rem; font-weight:800; color:var(--text); margin-bottom:6px;">
                 No Food Detected
               </h3>
 
-              <p style="font-size:0.95rem; color:var(--text-secondary); max-width:420px; margin:0 auto 12px; line-height:1.5;">
+              <p style="font-size:0.85rem; color:var(--text-secondary); max-width:380px; margin:0 auto 10px; line-height:1.5;">
                 ${escapeHtml(
                   data.message ||
                     err.message ||
-                    "We couldn't confidently identify a supported food item.",
+                    "No supported food detected in this image.",
                 )}
               </p>
 
-              <p style="font-size:0.875rem; color:var(--muted); max-width:400px; margin:0 auto 20px;">
-                Please point the camera at a fruit, vegetable, or supported food item and try again.
+              <p style="font-size:0.78rem; color:var(--muted); max-width:340px; margin:0 auto 16px;">
+                Please point the camera at a fruit, vegetable, or prepared food item and try again.
               </p>
 
-              <div style="display:flex; justify-content:center; gap:12px; flex-wrap:wrap;">
-                <button type="button" class="btn primary touch-friendly" id="rejectionTryAgainBtn">
-                  📷 Try Again
+              <div style="display:flex; justify-content:center; gap:10px; flex-wrap:wrap;">
+                <button type="button" class="btn primary btn-sm" id="rejectionTryAgainBtn">
+                  📷 Try Another Image
                 </button>
 
-                <button type="button" class="btn secondary touch-friendly" id="rejectionUploadBtn">
+                <button type="button" class="btn secondary btn-sm" id="rejectionUploadBtn">
                   🖼️ Upload Image
                 </button>
               </div>
@@ -1611,15 +1720,15 @@ document.addEventListener("DOMContentLoaded", () => {
         if (multiObjectsContainer) {
           multiObjectsContainer.innerHTML = `
             <div class="rejection-card low-confidence-card"
-              style="text-align:center; padding:36px 20px; background:var(--bg-alt); border-radius:var(--radius-lg); border:1px solid var(--border);">
+              style="text-align:center; padding:28px 16px; background:var(--bg-alt); border-radius:12px; border:1px solid var(--border);">
 
-              <span style="font-size:3rem; display:block; margin-bottom:12px;">⚠️</span>
+              <span style="font-size:2.5rem; display:block; margin-bottom:8px;">⚠️</span>
 
-              <h3 style="font-size:1.35rem; font-weight:800; color:var(--text); margin-bottom:8px;">
+              <h3 style="font-size:1.15rem; font-weight:800; color:var(--text); margin-bottom:6px;">
                 Low Confidence
               </h3>
 
-              <p style="font-size:0.95rem; color:var(--text-secondary); max-width:420px; margin:0 auto 16px; line-height:1.5;">
+              <p style="font-size:0.85rem; color:var(--text-secondary); max-width:380px; margin:0 auto 12px; line-height:1.5;">
                 ${escapeHtml(
                   data.message ||
                     err.message ||
@@ -1627,25 +1736,24 @@ document.addEventListener("DOMContentLoaded", () => {
                 )}
               </p>
 
-              <div style="text-align:left; max-width:340px; margin:0 auto 24px; padding:14px 18px; background:var(--card); border-radius:var(--radius-md); border:1px solid var(--border);">
-                <strong style="font-size:0.875rem; color:var(--text); display:block; margin-bottom:6px;">
-                  Try:
+              <div style="text-align:left; max-width:320px; margin:0 auto 18px; padding:10px 14px; background:var(--card); border-radius:8px; border:1px solid var(--border);">
+                <strong style="font-size:0.8rem; color:var(--text); display:block; margin-bottom:4px;">
+                  Tips for Better Scan:
                 </strong>
 
-                <ul style="font-size:0.85rem; color:var(--text-secondary); margin:0; padding-left:18px; line-height:1.6;">
-                  <li>Better, even lighting</li>
-                  <li>A closer image of the food item</li>
-                  <li>A plain background</li>
-                  <li>Keeping the food centered</li>
+                <ul style="font-size:0.75rem; color:var(--text-secondary); margin:0; padding-left:16px; line-height:1.5;">
+                  <li>Center the produce item</li>
+                  <li>Use bright, even lighting</li>
+                  <li>Avoid blurry camera angles</li>
                 </ul>
               </div>
 
-              <div style="display:flex; justify-content:center; gap:12px; flex-wrap:wrap;">
-                <button type="button" class="btn primary touch-friendly" id="lowConfTryAgainBtn">
+              <div style="display:flex; justify-content:center; gap:10px; flex-wrap:wrap;">
+                <button type="button" class="btn primary btn-sm" id="lowConfTryAgainBtn">
                   📷 Try Again
                 </button>
 
-                <button type="button" class="btn secondary touch-friendly" id="lowConfUploadBtn">
+                <button type="button" class="btn secondary btn-sm" id="lowConfUploadBtn">
                   🖼️ Upload Image
                 </button>
               </div>
@@ -1674,12 +1782,12 @@ document.addEventListener("DOMContentLoaded", () => {
         }
       } else {
         if (scanErrorCode) {
-          scanErrorCode.textContent = err.code || "Scan Error";
+          scanErrorCode.textContent = err.code || "Analysis Notice";
         }
 
         if (scanErrorMessage) {
           scanErrorMessage.textContent =
-            err.message || "Please upload a clearer food image.";
+            err.message || "Unable to complete the analysis. Please upload a clearer food photo.";
         }
 
         if (scanErrorBox) {
@@ -1706,81 +1814,195 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     lastUploadedImageUrl = data.image_url || "";
-
     lastPredictedLabel = data.label || "";
 
-    if (scanInferenceTime && data.inference_time_ms) {
-      scanInferenceTime.textContent = `${data.inference_time_ms} ms`;
+    const inferenceMs = Number(data.inference_time_ms) || 0;
+    const latencyFormatted = inferenceMs > 0 ? (inferenceMs / 1000).toFixed(2) + "s" : "--";
+
+    if (scanInferenceTime) {
+      scanInferenceTime.textContent = latencyFormatted;
+    }
+
+    // 1. Column 2 (Center AI Vision Viewport) Update
+    if (visionStatusBadge) {
+      visionStatusBadge.className = "vision-status-badge completed";
+      const label = visionStatusBadge.querySelector(".status-indicator-label");
+      if (label) label.textContent = "Food Detected";
     }
 
     if (data.annotated_image_url && annotatedImage) {
       annotatedImage.src = data.annotated_image_url;
-
       if (annotatedImageBox) {
-        annotatedImageBox.style.display = "block";
+        annotatedImageBox.style.display = "flex";
+      }
+      if (visionPreviewWrap) {
+        visionPreviewWrap.style.display = "none";
+      }
+    } else {
+      if (visionPreviewWrap) {
+        visionPreviewWrap.style.display = "flex";
+      }
+      if (annotatedImageBox) {
+        annotatedImageBox.style.display = "none";
       }
     }
 
-    if (data.warning) {
-      if (categoryWarningMessage) {
-        categoryWarningMessage.textContent = data.warning;
-      }
+    if (visionEmptyState) {
+      visionEmptyState.style.display = "none";
+    }
 
-      if (categoryWarningBox) {
-        categoryWarningBox.style.display = "flex";
+    // 2. Column 3 (Results Panel) Update
+    if (resultStatusBadge) {
+      resultStatusBadge.textContent = "Complete";
+    }
+
+    if (resultPlaceholder) {
+      resultPlaceholder.style.display = "none";
+    }
+
+    if (scanErrorBox) {
+      scanErrorBox.style.display = "none";
+    }
+
+    if (activeResultView) {
+      activeResultView.style.display = "block";
+    }
+
+    // Extract primary prediction details
+    const primaryObj = Array.isArray(data.objects) && data.objects.length > 0 ? data.objects[0] : {};
+    const foodName = data.food_name || primaryObj.item || data.label || "Detected Food";
+    const category = data.category || primaryObj.category || "Produce";
+    const condition = data.condition || primaryObj.freshness_status || primaryObj.freshness || "Fresh";
+
+    // Set Food Title and Category
+    if (primaryFoodName) {
+      primaryFoodName.textContent = foodName;
+    }
+    if (primaryCategoryPill) {
+      primaryCategoryPill.textContent = category;
+    }
+
+    // Set FRESH / SPOILED Hero Badge
+    if (primaryFreshnessBadge) {
+      primaryFreshnessBadge.className = "freshness-main-badge";
+      const isFresh = condition.toLowerCase().includes("fresh");
+      const isSpoiled = condition.toLowerCase().includes("spoil");
+
+      if (isFresh) {
+        primaryFreshnessBadge.classList.add("fresh");
+        if (primaryFreshnessLabel) primaryFreshnessLabel.textContent = "FRESH";
+      } else if (isSpoiled) {
+        primaryFreshnessBadge.classList.add("spoiled");
+        if (primaryFreshnessLabel) primaryFreshnessLabel.textContent = "SPOILED";
+      } else {
+        primaryFreshnessBadge.classList.add("neutral");
+        if (primaryFreshnessLabel) primaryFreshnessLabel.textContent = condition.toUpperCase();
       }
     }
 
+    // Set Confidence Gauge & Score
+    let conf = 0;
+    if (data.confidence != null && Number.isFinite(Number(data.confidence))) {
+      conf = Math.round(Number(data.confidence));
+    } else if (primaryObj.freshness_confidence != null) {
+      conf = Math.round(Number(primaryObj.freshness_confidence) * 100);
+    } else if (primaryObj.detection_confidence != null) {
+      conf = Math.round(Number(primaryObj.detection_confidence) * 100);
+    }
+    conf = Math.max(0, Math.min(100, conf));
+
+    if (primaryConfidenceValue) {
+      primaryConfidenceValue.textContent = `${conf}%`;
+    }
+    if (primaryConfBarFill) {
+      primaryConfBarFill.style.width = `${conf}%`;
+    }
+
+    // Set Condition Level text
+    if (primaryConditionLevel) {
+      const isFresh = condition.toLowerCase().includes("fresh");
+      const isSpoiled = condition.toLowerCase().includes("spoil");
+      primaryConditionLevel.textContent = isFresh ? "High Quality" : (isSpoiled ? "Spoiled / Unsafe" : condition);
+      primaryConditionLevel.style.color = isFresh ? "var(--fresh)" : (isSpoiled ? "var(--spoiled)" : "var(--text)");
+    }
+
+    // Set Latency text
+    if (primaryInferenceSpeed) {
+      primaryInferenceSpeed.textContent = latencyFormatted;
+    }
+
+    // Category Warning Box
+    if (data.warning && categoryWarningMessage && categoryWarningBox) {
+      categoryWarningMessage.textContent = data.warning;
+      categoryWarningBox.style.display = "flex";
+    } else if (categoryWarningBox) {
+      categoryWarningBox.style.display = "none";
+    }
+
+    // AI Summary Box
+    if (aiSummaryText) {
+      aiSummaryText.textContent = data.message || "FreshLens AI identified the uploaded food and analyzed its visible freshness condition.";
+    }
+
+    // Summary Statistics Bar
     const summary = data.summary || {};
-
-    const totalObjects =
-      Number(summary.total_objects) ||
-      (Array.isArray(data.objects) ? data.objects.length : 1);
+    const totalObjects = Number(summary.total_objects) || (Array.isArray(data.objects) ? data.objects.length : 1);
 
     if (summaryText) {
       summaryText.innerHTML = `
-        <div style="display:flex; flex-direction:column; gap:4px;">
-          <div>
-            <strong>${totalObjects} Object${totalObjects > 1 ? "s" : ""} Identified</strong>
-            &nbsp;|&nbsp;
-            🍎 Fruits: ${Number(summary.fruits) || 0}
-            &nbsp;|&nbsp;
-            🥦 Vegetables: ${Number(summary.vegetables) || 0}
-            &nbsp;|&nbsp;
-            🍱 Foods: ${Number(summary.food) || 0}
-          </div>
-
-          <div style="font-size:0.8rem; color:var(--text-secondary); opacity:0.9;">
-            ✅ Fresh: ${Number(summary.fresh) || 0}
-            &nbsp;|&nbsp;
-            ⚠️ Spoiled: ${Number(summary.spoiled) || 0}
-          </div>
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px;">
+          <span><strong>${totalObjects} Item${totalObjects > 1 ? "s" : ""} Identified</strong></span>
+          <span style="color:var(--text-secondary); font-size:0.75rem;">
+            🍎 Fruits: ${Number(summary.fruits) || 0} &bull; 🥦 Veg: ${Number(summary.vegetables) || 0} &bull; ✅ Fresh: ${Number(summary.fresh) || 0} &bull; ⚠️ Spoiled: ${Number(summary.spoiled) || 0}
+          </span>
         </div>
       `;
     }
-
     if (resultSummaryBar) {
-      resultSummaryBar.style.display = "block";
+      resultSummaryBar.style.display = totalObjects > 1 ? "block" : "none";
+    }
+
+    // Set Primary Nutrition Strip
+    const nut = primaryObj.nutrition || {};
+    if (primaryNutritionStrip) {
+      if (nut.calories_per_100g != null) {
+        if (primaryCaloriesVal) primaryCaloriesVal.textContent = `${escapeHtml(nut.calories_per_100g)} kcal`;
+        if (primaryCarbsVal) primaryCarbsVal.textContent = `${escapeHtml(nut.carbs_g ?? "-")}g`;
+        if (primaryProteinVal) primaryProteinVal.textContent = `${escapeHtml(nut.protein_g ?? "-")}g`;
+        primaryNutritionStrip.style.display = "grid";
+      } else {
+        primaryNutritionStrip.style.display = "none";
+      }
+    }
+
+    // Set Primary Storage & Safety Guidance Accordion
+    if (primaryGuidanceAccordion && primaryGuidanceContent) {
+      const storageTip = primaryObj.storage_tip
+        ? `<p style="margin-bottom:6px; font-size:0.78rem;"><strong>Storage:</strong> ${escapeHtml(primaryObj.storage_tip)}</p>`
+        : "";
+      const safetyGuideline = primaryObj.safety_guideline
+        ? `<p style="margin:0; font-size:0.78rem;"><strong>Safety:</strong> ${escapeHtml(primaryObj.safety_guideline)}</p>`
+        : "";
+      if (storageTip || safetyGuideline) {
+        primaryGuidanceContent.innerHTML = storageTip + safetyGuideline;
+        primaryGuidanceAccordion.style.display = "block";
+      } else {
+        primaryGuidanceAccordion.style.display = "none";
+      }
+    }
+
+    // Multi Objects List (Only display additional items when 2 or more objects exist)
+    if (multiObjectsContainer) {
+      multiObjectsContainer.innerHTML = "";
+      if (Array.isArray(data.objects) && data.objects.length > 1) {
+        data.objects.slice(1).forEach((obj) => {
+          multiObjectsContainer.appendChild(createObjectResultCard(obj));
+        });
+      }
     }
 
     if (viewAnalysisPrompt) {
       viewAnalysisPrompt.style.display = "block";
-    }
-
-    if (multiObjectsContainer) {
-      multiObjectsContainer.innerHTML = "";
-
-      if (Array.isArray(data.objects) && data.objects.length > 0) {
-        data.objects.forEach((obj) => {
-          multiObjectsContainer.appendChild(createObjectResultCard(obj));
-        });
-      } else {
-        multiObjectsContainer.innerHTML = `
-          <div style="padding:30px;text-align:center;color:var(--muted);">
-            Analysis completed, but no result objects were returned.
-          </div>
-        `;
-      }
     }
 
     if (afterScanActions) {
@@ -1800,169 +2022,42 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function createObjectResultCard(obj = {}) {
-    const card = document.createElement("div");
-
-    card.className = "detected-item-card";
+    const row = document.createElement("div");
+    row.className = "detected-object-compact-row";
 
     const item = escapeHtml(obj.item || "Unknown Food");
+    const category = escapeHtml(obj.category || "Produce");
+    const freshness = obj.freshness || "Fresh";
 
-    const category = escapeHtml(obj.category || "Food");
+    let badgeClass = "fresh";
+    let badgeText = obj.freshness_status || "Fresh";
 
-    const freshness = obj.freshness || "";
-
-    let badgeClass = "neutral";
-
-    let badgeText = obj.freshness_status || "Not Available";
-
-    if (freshness === "Fresh") {
-      badgeClass = "fresh";
-      badgeText = "Fresh ✅";
-    } else if (freshness === "Spoiled") {
+    if (freshness.toLowerCase().includes("spoil")) {
       badgeClass = "spoiled";
-
-      badgeText = "Spoiled ⚠️";
+      badgeText = "Spoiled";
+    } else if (!freshness.toLowerCase().includes("fresh")) {
+      badgeClass = "neutral";
+      badgeText = freshness;
     }
 
     const detectionConfidence = Number(obj.detection_confidence);
-
     const freshnessConfidence = Number(obj.freshness_confidence);
-
-    const detConfPct = Number.isFinite(detectionConfidence)
-      ? Math.round(detectionConfidence * 100)
-      : 0;
-
-    const freshConfPct = Number.isFinite(freshnessConfidence)
+    const conf = Number.isFinite(freshnessConfidence)
       ? Math.round(freshnessConfidence * 100)
-      : detConfPct;
+      : (Number.isFinite(detectionConfidence) ? Math.round(detectionConfidence * 100) : 95);
 
-    const confidence = Number.isFinite(freshnessConfidence)
-      ? freshConfPct
-      : detConfPct;
-
-    const nutrition = obj.nutrition || {};
-
-    const nutritionHtml =
-      nutrition.calories_per_100g != null
-        ? `
-          <div class="nutrition-grid">
-            <div class="nutrition-item">
-              <span class="nut-label">Calories</span>
-              <span class="nut-val">${escapeHtml(nutrition.calories_per_100g)} kcal</span>
-            </div>
-
-            <div class="nutrition-item">
-              <span class="nut-label">Carbs</span>
-              <span class="nut-val">${escapeHtml(nutrition.carbs_g ?? "-")}g</span>
-            </div>
-
-            <div class="nutrition-item">
-              <span class="nut-label">Protein</span>
-              <span class="nut-val">${escapeHtml(nutrition.protein_g ?? "-")}g</span>
-            </div>
-          </div>
-        `
-        : "";
-
-    const stabilityWarning = obj.stability_warning
-      ? `
-        <div class="warning-box" style="margin-top:12px; padding:8px 12px; font-size:0.825rem;">
-          💡 ${escapeHtml(obj.stability_warning)}
-        </div>
-      `
-      : "";
-
-    const storageTip = obj.storage_tip
-      ? `<p style="margin-top:8px;"><strong>Storage:</strong> ${escapeHtml(obj.storage_tip)}</p>`
-      : "";
-
-    const safetyGuideline = obj.safety_guideline
-      ? `<p style="margin-top:8px;"><strong>Safety:</strong> ${escapeHtml(obj.safety_guideline)}</p>`
-      : "";
-
-    const guidanceHtml =
-      storageTip || safetyGuideline
-        ? `
-          <details class="guideline-accordion" style="margin-top:14px;">
-            <summary>Storage & Safety Guidance</summary>
-            ${storageTip}
-            ${safetyGuideline}
-          </details>
-        `
-        : "";
-
-    card.innerHTML = `
-      <div class="item-card-header">
-        <div>
-          <h3 style="font-size:1.2rem; font-weight:800; color:var(--text);">
-            ${item}
-          </h3>
-
-          <span style="font-size:0.8rem; color:var(--muted);">
-            ${category}
-          </span>
-        </div>
-
-        <span class="status-badge ${badgeClass}" style="font-size:0.8rem; padding:4px 12px;">
-          ${escapeHtml(badgeText)}
-        </span>
+    row.innerHTML = `
+      <div class="compact-obj-left">
+        <span class="compact-obj-name">${item}</span>
+        <span class="compact-obj-cat">${category}</span>
       </div>
-
-      <div class="confidence-meter-container">
-        <div style="display:flex; justify-content:space-between; font-size:0.825rem; font-weight:600;">
-          <span style="color:var(--text-secondary);">
-            Confidence
-          </span>
-
-          <span style="color:var(--primary); font-weight:700;">
-            ${confidence}%
-          </span>
-        </div>
-
-        <div class="confidence-bar-track">
-          <div
-            class="confidence-bar-fill"
-            style="width:${Math.max(0, Math.min(100, confidence))}%;">
-          </div>
-        </div>
-      </div>
-
-      ${nutritionHtml}
-      ${stabilityWarning}
-      ${guidanceHtml}
-
-      <div style="margin-top:16px;">
-        <button
-          class="btn secondary touch-friendly ask-ai-obj-btn"
-          type="button"
-          style="width:100%; border-radius:var(--radius-full); font-size:0.875rem;">
-          🤖 Ask AI Assistant About This ${item} ➔
-        </button>
+      <div class="compact-obj-right">
+        <span class="compact-obj-badge ${badgeClass}">● ${escapeHtml(badgeText)}</span>
+        <span class="compact-obj-conf">${conf}%</span>
       </div>
     `;
 
-    const askBtn = card.querySelector(".ask-ai-obj-btn");
-
-    if (askBtn) {
-      askBtn.addEventListener("click", () => {
-        const scanContext = {
-          item: obj.item || "",
-          category: obj.category || "",
-          freshness: obj.freshness || "",
-          confidence: obj.freshness_confidence || obj.detection_confidence || 0,
-          storage_tip: obj.storage_tip || "",
-          safety_guideline: obj.safety_guideline || "",
-        };
-
-        sessionStorage.setItem(
-          "freshlens_active_scan",
-          JSON.stringify(scanContext),
-        );
-
-        window.location.href = "/chatbot";
-      });
-    }
-
-    return card;
+    return row;
   }
 
   if (feedbackYes) {

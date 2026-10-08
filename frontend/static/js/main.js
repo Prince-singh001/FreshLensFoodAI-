@@ -1,15 +1,10 @@
-/**
- * FreshLens AI - Global Client Scripts
- * Theme toggle, mobile drawer navigation, and PWA service worker registration.
- */
-
 document.addEventListener("DOMContentLoaded", () => {
   const themeToggle = document.getElementById("themeToggle");
   const menuBtn = document.getElementById("menuBtn");
   const navLinks = document.getElementById("navLinks");
 
   // 1. Theme Initialization & Toggle
-  const savedTheme = localStorage.getItem("freshlens_theme") || localStorage.getItem("safebite_theme") || "light";
+  const savedTheme = localStorage.getItem("freshlens_theme") || localStorage.getItem("safebite_theme") || "dark";
   document.documentElement.setAttribute("data-theme", savedTheme);
   updateThemeIcon(savedTheme);
 

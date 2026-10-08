@@ -8,9 +8,7 @@
       <a href="{{ url_for('home') }}" class="{% if request.endpoint == 'home' %}active{% endif %}">Home</a>
       <a href="{{ url_for('scan') }}" class="{% if request.endpoint == 'scan' %}active{% endif %}">Food Scanner</a>
       <a href="{{ url_for('features') }}" class="{% if request.endpoint == 'features' %}active{% endif %}">Features</a>
-      {% if has_history %}
       <a href="{{ url_for('history') }}" class="{% if request.endpoint == 'history' %}active{% endif %}">History</a>
-      {% endif %}
       <a href="{{ url_for('chatbot_page') }}" class="{% if request.endpoint == 'chatbot_page' %}active{% endif %}">AI Assistant</a>
       <a href="{{ url_for('about') }}" class="{% if request.endpoint == 'about' %}active{% endif %}">About</a>
       <a href="{{ url_for('contact') }}" class="nav-btn {% if request.endpoint == 'contact' %}active{% endif %}">Contact</a>
