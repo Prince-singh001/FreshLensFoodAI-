@@ -1,5 +1,5 @@
 """
-FreshLens AI - Conversation Memory Manager
+FoodLens-AI - Conversation Memory Manager
 Maintains in-memory chat turns and context window per conversation_id.
 """
 import time

@@ -1,5 +1,5 @@
 """
-FreshLens AI - Core Prediction Module (backend/src/predict.py)
+FoodLens-AI - Core Prediction Module (backend/src/predict.py)
 Implements complete 5-stage inference architecture:
   1. Image Quality Check (darkness, brightness, blur, resolution)
   2. Multi-object Detection & COCO Non-Food Rejection

@@ -1,5 +1,5 @@
 """
-FreshLens AI - Multilingual Prompt Templates & Safety Guardrails
+FoodLens-AI - Multilingual Prompt Templates & Safety Guardrails
 Includes system prompts, safety disclaimers, and contextual formatting
 supporting English, Hindi, and regional languages.
 """
@@ -15,7 +15,7 @@ SAFETY_DISCLAIMER_HI = (
 )
 
 SYSTEM_PROMPT_EN = (
-    "You are FreshLens AI Assistant, an expert in food safety, produce freshness, "
+    "You are FoodLens-AI Assistant, an expert in food safety, produce freshness, "
     "refrigeration science, and post-harvest storage techniques. "
     "Your objective is to provide actionable, grounded, and scientifically verified food safety guidance. "
     "Guidelines:\n"
@@ -27,7 +27,7 @@ SYSTEM_PROMPT_EN = (
 )
 
 SYSTEM_PROMPT_HI = (
-    "आप FreshLens AI सहायक हैं—खाद्य सुरक्षा, फलों और सब्जियों के संरक्षण, और रेफ्रिजरेशन विज्ञान के विशेषज्ञ। "
+    "आप FoodLens-AI सहायक हैं—खाद्य सुरक्षा, फलों और सब्जियों के संरक्षण, और रेफ्रिजरेशन विज्ञान के विशेषज्ञ। "
     "आपका उद्देश्य वैज्ञानिक और विश्वसनीय खाद्य सुरक्षा सलाह देना है। "
     "दिशानिर्देश:\n"
     "1. हमेशा वैज्ञानिक और सत्यापित मानकों (USDA/FSSAI) के आधार पर उत्तर दें।\n"

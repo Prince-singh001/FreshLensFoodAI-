@@ -52,30 +52,20 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 
 def initialize_models():
-
-    logger.info("Initializing FreshLens AI models...")
-
+    logger.info("Initializing FoodLens-AI models...")
     try:
         get_classes_metadata()
-
         get_legacy_class_indices()
-
         get_detector_model()
-
         get_freshness_model()
-
         logger.info(
-            "FreshLens AI model initialization completed successfully."
+            "FoodLens-AI model initialization completed successfully."
         )
-
         return True
-
     except Exception as e:
-
         logger.exception(
-            f"FreshLens AI model initialization failed: {e}"
+            f"FoodLens-AI model initialization failed: {e}"
         )
-
         return False
 
 
@@ -177,11 +167,10 @@ def history():
 
 @app.route("/health")
 def health():
-
     return jsonify({
         "success": True,
         "status": "healthy" if MODEL_READY else "degraded",
-        "service": "FreshLens AI",
+        "service": "FoodLens-AI",
         "version": "2.0.0",
         "environment": ENV,
         "models_ready": MODEL_READY,
@@ -404,7 +393,7 @@ def server_error(error):
 if __name__ == "__main__":
 
     logger.info(
-        f"Starting FreshLens AI server on "
+        f"Starting FoodLens-AI server on "
         f"http://{HOST}:{PORT} "
         f"(debug={DEBUG})"
     )

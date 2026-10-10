@@ -1,5 +1,5 @@
 """
-FreshLens AI - Agentic AI Orchestrator
+FoodLens-AI - Agentic AI Orchestrator
 Uses LangChain patterns, tool selection, RAG retrieval, scan-context integration,
 and multilingual synthesis (English, Hindi, etc.) with conversational memory.
 """
@@ -25,7 +25,7 @@ from .tools import (
     tool_scan_history
 )
 
-class FreshLensAgent:
+class FoodLensAgent:
     """Agentic AI coordinator for food recognition, freshness, storage and safety."""
     def __init__(self):
         self.memory = get_memory()
@@ -299,27 +299,29 @@ class FreshLensAgent:
                     )
 
         # E: General Knowledge / RAG Fallback
-        content = tool_output.get("content") or "FreshLens AI is equipped to assist you with produce freshness, storage techniques, and food safety protocols."
+        content = tool_output.get("content") or "FoodLens-AI is equipped to assist you with produce freshness, storage techniques, and food safety protocols."
         if is_hindi:
             return (
-                "**FreshLens AI खाद्य सुरक्षा अंतर्दृष्टि:**\n\n"
+                "**FoodLens-AI खाद्य सुरक्षा अंतर्दृष्टि:**\n\n"
                 f"{content}\n\n"
                 "आप मुझसे किसी भी फल, सब्जी या भोजन के भंडारण, पोषक तत्वों या खराब होने के लक्षणों के बारे में पूछ सकते हैं।"
                 + disclaimer
             )
         else:
             return (
-                "**FreshLens AI Scientific Guidance:**\n\n"
+                "**FoodLens-AI Scientific Guidance:**\n\n"
                 f"{content}\n\n"
                 "You can ask follow-up questions about specific storage temperatures, ethylene management, or nutrition facts."
                 + disclaimer
             )
 
+FreshLensAgent = FoodLensAgent
+
 # Global singleton agent
 _agent_instance = None
 
-def get_agent() -> FreshLensAgent:
+def get_agent() -> FoodLensAgent:
     global _agent_instance
     if _agent_instance is None:
-        _agent_instance = FreshLensAgent()
+        _agent_instance = FoodLensAgent()
     return _agent_instance

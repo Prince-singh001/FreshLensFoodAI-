@@ -1,8 +1,8 @@
 """
-FreshLens AI - Agentic AI Package
+FoodLens-AI - Agentic AI Package
 RAG retrieval, modular tools, multilingual reasoning, and conversational memory.
 """
-from .agent import get_agent, FreshLensAgent
+from .agent import get_agent, FoodLensAgent, FreshLensAgent
 from .retriever import get_retriever, FoodKnowledgeRetriever
 from .memory import get_memory, ConversationMemory
 from .tools import (
@@ -16,6 +16,7 @@ from .tools import (
 
 __all__ = [
     "get_agent",
+    "FoodLensAgent",
     "FreshLensAgent",
     "get_retriever",
     "FoodKnowledgeRetriever",

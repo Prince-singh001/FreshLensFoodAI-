@@ -18,7 +18,7 @@ EPOCHS = 15
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 MODEL_DIR = os.path.abspath(os.path.join(BASE_DIR, "../models"))
-MODEL_PATH = os.path.join(MODEL_DIR, "freshlens_mobilenetv2_model.h5")
+MODEL_PATH = os.path.join(MODEL_DIR, "foodlens_mobilenetv2_model.h5")
 CLASS_PATH = os.path.join(MODEL_DIR, "class_indices.json")
 
 os.makedirs(MODEL_DIR, exist_ok=True)

@@ -251,8 +251,8 @@ document.addEventListener("DOMContentLoaded", () => {
         supported: false,
         title: "Secure Connection (HTTPS) Required",
         message: env.isLanIp
-          ? "Camera access requires HTTPS on this address. Open the secure HTTPS version of FreshLens AI, or use localhost on the same machine."
-          : "Camera access requires HTTPS on this address. Open the secure HTTPS version of FreshLens AI.",
+          ? "Camera access requires HTTPS on this address. Open the secure HTTPS version of FoodLens-AI, or use localhost on the same machine."
+          : "Camera access requires HTTPS on this address. Open the secure HTTPS version of FoodLens-AI.",
         icon: "🔒",
       };
     }
@@ -1095,7 +1095,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
 
                 resolve(
-                  new File([blob], "freshlens_scan.jpg", {
+                  new File([blob], "foodlens_scan.jpg", {
                     type: "image/jpeg",
                     lastModified: Date.now(),
                   }),
@@ -1137,7 +1137,7 @@ document.addEventListener("DOMContentLoaded", () => {
               }
 
               resolve(
-                new File([blob], "freshlens_scan.jpg", {
+                new File([blob], "foodlens_scan.jpg", {
                   type: "image/jpeg",
                   lastModified: Date.now(),
                 }),
@@ -1239,7 +1239,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
       const optimizedFile = await optimizeImageForUpload(file);
 
-      console.log("FreshLens image upload:", {
+      console.log("FoodLens image upload:", {
         originalName: file.name,
         originalSizeKB: Math.round(originalSize / 1024),
         optimizedName: optimizedFile.name,
@@ -1251,7 +1251,7 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       if (progressStepText) {
-        progressStepText.textContent = "Sending image to FreshLens AI...";
+        progressStepText.textContent = "Sending image to FoodLens-AI...";
       }
 
       const formData = new FormData();
@@ -1259,7 +1259,7 @@ document.addEventListener("DOMContentLoaded", () => {
       formData.append(
         "file",
         optimizedFile,
-        optimizedFile.name || "freshlens_scan.jpg",
+        optimizedFile.name || "foodlens_scan.jpg",
       );
 
       formData.append("selected_category", activeCategory || "All");
@@ -1357,7 +1357,7 @@ document.addEventListener("DOMContentLoaded", () => {
         try {
           data = await response.json();
         } catch (jsonError) {
-          console.error("FreshLens JSON parse error:", jsonError);
+          console.error("FoodLens JSON parse error:", jsonError);
 
           data = {
             success: false,
@@ -1379,7 +1379,7 @@ document.addEventListener("DOMContentLoaded", () => {
         };
       }
 
-      console.log("FreshLens API response:", {
+      console.log("FoodLens API response:", {
         status: response.status,
         ok: response.ok,
         data,
@@ -1422,7 +1422,7 @@ document.addEventListener("DOMContentLoaded", () => {
           error: {
             code: "PREDICTION_UNAVAILABLE",
             message:
-              "The FreshLens AI server is temporarily unavailable. Please wait a few seconds and try again.",
+              "The FoodLens-AI server is temporarily unavailable. Please wait a few seconds and try again.",
           },
         });
 
@@ -1507,7 +1507,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
       activeRequestController = null;
 
-      console.error("FreshLens prediction request failed:", error);
+      console.error("FoodLens prediction request failed:", error);
 
       if (progressOverlay) {
         progressOverlay.style.display = "none";
@@ -1528,7 +1528,7 @@ document.addEventListener("DOMContentLoaded", () => {
           error: {
             code: "NETWORK_ERROR",
             message:
-              "Unable to connect to the FreshLens AI prediction service. Please try again.",
+              "Unable to connect to the FoodLens-AI prediction service. Please try again.",
           },
         });
       }
@@ -1640,7 +1640,7 @@ document.addEventListener("DOMContentLoaded", () => {
       if (scanErrorMessage) {
         scanErrorMessage.textContent =
           err.message ||
-          "FreshLens AI server is taking too long to respond. Please try again.";
+          "FoodLens-AI server is taking too long to respond. Please try again.";
       }
 
       if (scanErrorBox) {
@@ -1805,9 +1805,10 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function renderScanSuccess(data) {
-    console.log("FreshLens successful analysis:", data);
+    console.log("FoodLens successful analysis:", data);
 
     try {
+      sessionStorage.setItem("foodlens_latest_analysis", JSON.stringify(data));
       sessionStorage.setItem("freshlens_latest_analysis", JSON.stringify(data));
     } catch (err) {
       console.warn("Could not save analysis to sessionStorage:", err);
@@ -1941,7 +1942,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // AI Summary Box
     if (aiSummaryText) {
-      aiSummaryText.textContent = data.message || "FreshLens AI identified the uploaded food and analyzed its visible freshness condition.";
+      aiSummaryText.textContent = data.message || "FoodLens-AI identified the uploaded food and analyzed its visible freshness condition.";
     }
 
     // Summary Statistics Bar

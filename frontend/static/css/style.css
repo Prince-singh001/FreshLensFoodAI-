@@ -1,38 +1,40 @@
 /* ==========================================================================
-   FreshLens AI - Design System & Modern Responsive Stylesheet
+   FoodLens-AI - Design System & Modern Responsive Stylesheet
    ========================================================================== */
 
 :root {
   --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   
-  /* Light Theme Palette */
-  --bg: #f8fafc;
-  --bg-alt: #f1f5f9;
+  /* Light Theme Palette - FoodLens-AI Precision Design System */
+  --bg: #F7FAF8;
+  --bg-alt: #EEF4F0;
   --card: #ffffff;
   --card-hover: #ffffff;
   --text: #0f172a;
   --text-secondary: #475569;
   --muted: #64748b;
   --border: #e2e8f0;
-  --border-focus: #0ea5e9;
+  --border-focus: #20B8A5;
 
   /* Brand Accents */
-  --primary: #059669;
-  --primary-hover: #047857;
-  --primary-light: rgba(5, 150, 105, 0.1);
-  --secondary: #0ea5e9;
-  --secondary-hover: #0284c7;
-  --secondary-light: rgba(14, 165, 233, 0.1);
+  --primary: #16845B;
+  --primary-hover: #105C43;
+  --primary-dark: #105C43;
+  --primary-light: rgba(22, 132, 91, 0.1);
+  --secondary: #20B8A5;
+  --secondary-hover: #179e8d;
+  --secondary-light: rgba(32, 184, 165, 0.12);
+  --accent-teal: #20B8A5;
 
   /* Status Colors */
-  --fresh: #10b981;
-  --fresh-bg: rgba(16, 185, 129, 0.12);
+  --fresh: #16845B;
+  --fresh-bg: rgba(22, 132, 91, 0.12);
   --spoiled: #ef4444;
   --spoiled-bg: rgba(239, 68, 68, 0.12);
   --warning: #f59e0b;
   --warning-bg: rgba(245, 158, 11, 0.12);
-  --neutral-badge: #3b82f6;
-  --neutral-bg: rgba(59, 130, 246, 0.12);
+  --neutral-badge: #20B8A5;
+  --neutral-bg: rgba(32, 184, 165, 0.12);
 
   /* Shadows */
   --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
@@ -243,10 +245,45 @@ h3 { font-size: clamp(1.15rem, 2vw + 0.25rem, 1.45rem); }
   font-weight: 800;
   color: var(--text);
   letter-spacing: -0.03em;
+  text-decoration: none;
 }
 
-.logo span {
-  font-size: 1.6rem;
+.brand-symbol,
+.footer-logo-img {
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  display: block;
+}
+
+.brand-text {
+  display: inline-flex;
+  align-items: center;
+  font-size: 1.32rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: var(--text);
+  line-height: 1;
+}
+
+.brand-text span {
+  color: var(--primary);
+  font-size: inherit;
+}
+
+.brand-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--accent-teal, #20B8A5);
+  color: #ffffff !important;
+  font-size: 0.65rem !important;
+  font-weight: 800;
+  padding: 2px 6px;
+  border-radius: 5px;
+  letter-spacing: 0.04em;
+  margin-left: 5px;
+  line-height: 1.2;
 }
 
 .nav-links {
@@ -488,7 +525,7 @@ section {
 }
 
 /* ==========================================================================
-   FreshLens AI — Professional AI Food Analysis Dashboard (scan.html)
+   FoodLens-AI — Professional AI Food Analysis Dashboard (scan.html)
    ========================================================================== */
 
 /* Main Page Container & Layout */

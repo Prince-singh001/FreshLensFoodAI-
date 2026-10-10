@@ -6,9 +6,9 @@ PROD_DIR = os.path.abspath(os.path.join(BASE_DIR, "../../models/production"))
 
 models_to_convert = [
     {
-        "h5": os.path.join(PROD_DIR, "freshlens_mobilenetv2_model.h5"),
-        "tflite": os.path.join(PROD_DIR, "freshlens_mobilenetv2_model.tflite"),
-        "name": "FreshLens Freshness Classifier"
+        "h5": os.path.join(PROD_DIR, "foodlens_mobilenetv2_model.h5") if os.path.exists(os.path.join(PROD_DIR, "foodlens_mobilenetv2_model.h5")) else os.path.join(PROD_DIR, "freshlens_mobilenetv2_model.h5"),
+        "tflite": os.path.join(PROD_DIR, "foodlens_mobilenetv2_model.tflite"),
+        "name": "FoodLens Freshness Classifier"
     },
     {
         "h5": os.path.join(PROD_DIR, "food_validator_model.h5"),

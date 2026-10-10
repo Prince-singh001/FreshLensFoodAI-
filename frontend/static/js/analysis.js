@@ -1,5 +1,5 @@
 /**
- * FreshLens AI - Food Analysis Dashboard Controller
+ * FoodLens-AI - Food Analysis Dashboard Controller
  * Handles multi-object visualization, category grouping, duplicate item breakdowns,
  * nutrition calculation, and safety guidance rendering.
  */
@@ -69,7 +69,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   if (!scanData) {
-    const stored = sessionStorage.getItem("freshlens_latest_analysis");
+    const stored = sessionStorage.getItem("foodlens_latest_analysis") || sessionStorage.getItem("freshlens_latest_analysis");
     if (stored) {
       try {
         scanData = JSON.parse(stored);
@@ -263,7 +263,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     // 8. Ask AI Assistant Setup
     const scanContextText = encodeURIComponent(
-      `I scanned an image with FreshLens AI. Detected items: ${objects.map(o => `${o.item} (${o.freshness_status})`).join(", ")}. Can you provide recipe tips and storage guidance?`
+      `I scanned an image with FoodLens-AI. Detected items: ${objects.map(o => `${o.item} (${o.freshness_status})`).join(", ")}. Can you provide recipe tips and storage guidance?`
     );
     if (askAiAssistantBtn) {
       askAiAssistantBtn.href = `/chatbot?prompt=${scanContextText}`;

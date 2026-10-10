@@ -1,5 +1,5 @@
-// FreshLens AI - Progressive Web App Service Worker
-const CACHE_NAME = 'freshlens-v2.0.0';
+// FoodLens-AI - Progressive Web App Service Worker
+const CACHE_NAME = 'foodlens-v2.0.0';
 const STATIC_ASSETS = [
   '/',
   '/scan',
@@ -10,6 +10,8 @@ const STATIC_ASSETS = [
   '/static/css/style.css',
   '/static/js/main.js',
   '/static/js/scan.js',
+  '/static/image/logo-symbol.svg',
+  '/static/image/favicon.svg',
   '/static/manifest.json'
 ];
 

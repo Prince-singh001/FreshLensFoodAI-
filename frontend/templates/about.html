@@ -3,9 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>About | FreshLens AI</title>
-  <meta name="description" content="Learn about FreshLens AI: our mission to make food decisions easier, reduce waste, and provide clear freshness and safety insights." />
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🥗</text></svg>" />
+  <title>About | FoodLens-AI</title>
+  <meta name="description" content="Learn about FoodLens-AI: our mission to make food decisions easier, reduce waste, and provide clear freshness and safety insights." />
+  <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='image/favicon.svg') }}" />
+  <link rel="apple-touch-icon" href="{{ url_for('static', filename='image/apple-touch-icon.png') }}" />
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
 </head>
 <body>
@@ -15,10 +16,10 @@
     <!-- Section 1: Hero -->
     <section class="hero" style="max-width:1200px; margin:0 auto; padding:40px 20px 30px;">
       <div class="hero-content">
-        <span class="badge">ABOUT FRESHLENS AI</span>
+        <span class="badge">ABOUT FOODLENS-AI</span>
         <h1>See Your Food. Understand Its Condition.</h1>
         <p>
-          FreshLens AI is designed to make everyday food decisions easier by allowing users to capture or upload a food image and receive useful information about the detected item and its freshness when supported.
+          FoodLens-AI is designed to make everyday food decisions easier by allowing users to capture or upload a food image and receive useful information about the detected item and its freshness when supported.
         </p>
         <div class="hero-actions">
           <a href="{{ url_for('scan') }}" class="btn primary touch-friendly">📷 Try Food Scanner</a>
@@ -39,7 +40,7 @@
     <section style="max-width:1200px; margin:40px auto; padding:0 20px;">
       <div class="section-heading" style="text-align:center; max-width:680px; margin:0 auto 32px;">
         <span class="badge">Mission & Purpose</span>
-        <h2>Why FreshLens AI Exists</h2>
+        <h2>Why FoodLens-AI Exists</h2>
         <p style="color:var(--text-secondary); font-size:0.95rem; margin-top:6px;">
           Empowering households and food lovers to make smarter, safer, and less wasteful food choices.
         </p>
@@ -58,7 +59,7 @@
           <div class="icon">💡</div>
           <h3>How We Help Users</h3>
           <p>
-            FreshLens AI turns a quick snapshot into clear condition indicators. Instead of second-guessing produce in your fridge or grocery store, you receive instant freshness assessments, storage recommendations, and safety reminders.
+            FoodLens-AI turns a quick snapshot into clear condition indicators. Instead of second-guessing produce in your fridge or grocery store, you receive instant freshness assessments, storage recommendations, and safety reminders.
           </p>
         </div>
 
@@ -66,17 +67,17 @@
           <div class="icon">🤝</div>
           <h3>Our Product Philosophy</h3>
           <p>
-            We prioritize honesty and transparency over inflated claims. When an item is supported, we share clear assessments. When it isn't, we tell you openly. FreshLens AI assists your judgment—it never replaces your common sense.
+            We prioritize honesty and transparency over inflated claims. When an item is supported, we share clear assessments. When it isn't, we tell you openly. FoodLens-AI assists your judgment—it never replaces your common sense.
           </p>
         </div>
       </div>
     </section>
 
-    <!-- Section 3: What You Can Do With FreshLens AI -->
+    <!-- Section 3: What You Can Do With FoodLens-AI -->
     <section style="max-width:1200px; margin:50px auto; padding:0 20px;">
       <div class="section-heading" style="text-align:center; max-width:680px; margin:0 auto 32px;">
         <span class="badge">Everyday Capabilities</span>
-        <h2>What You Can Do With FreshLens AI</h2>
+        <h2>What You Can Do With FoodLens-AI</h2>
         <p style="color:var(--text-secondary); font-size:0.95rem; margin-top:6px;">
           Practical features designed to fit naturally into your kitchen routine.
         </p>
@@ -109,11 +110,11 @@
       </div>
     </section>
 
-    <!-- Section 4: Team Behind FreshLens AI -->
+    <!-- Section 4: Team Behind FoodLens-AI -->
     <section style="max-width:1200px; margin:50px auto; padding:0 20px;">
       <div class="section-heading" style="text-align:center; max-width:680px; margin:0 auto 32px;">
         <span class="badge">Team</span>
-        <h2>The Team Behind FreshLens AI</h2>
+        <h2>The Team Behind FoodLens-AI</h2>
         <p style="color:var(--text-secondary); font-size:0.95rem; margin-top:6px;">
           Building thoughtful, user-centric tools for smarter food decisions.
         </p>
@@ -141,7 +142,7 @@
     <!-- Section 5: Bottom CTA -->
     <section style="max-width:1100px; margin:50px auto 30px; padding:0 20px;">
       <div class="cta-section" style="padding:48px 24px; text-align:center;">
-        <h2 style="font-size:1.85rem; margin-bottom:10px;">Experience FreshLens AI Today</h2>
+        <h2 style="font-size:1.85rem; margin-bottom:10px;">Experience FoodLens-AI Today</h2>
         <p style="max-width:540px; margin:0 auto 24px; color:var(--text-secondary);">
           Take a fresh look at what you eat and start making better food decisions right away.
         </p>

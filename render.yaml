@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: freshlens-ai
+    name: foodlens-ai
     runtime: python
     buildCommand: pip install -r backend/requirements.txt
     startCommand: gunicorn --config backend/gunicorn.conf.py backend.app:app

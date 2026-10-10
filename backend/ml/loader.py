@@ -130,7 +130,7 @@ def _load_tflite_model():
             return _tflite_freshness_interpreter
 
         logger.info(
-            f"Loading FreshLens AI TFLite model from {TFLITE_MODEL_PATH}..."
+            f"Loading FoodLens-AI TFLite model from {TFLITE_MODEL_PATH}..."
         )
 
         if not os.path.exists(TFLITE_MODEL_PATH):
@@ -181,7 +181,7 @@ def _load_keras_model():
             return _keras_freshness_model
 
         logger.info(
-            f"Loading FreshLens AI Keras model from {KERAS_MODEL_PATH}..."
+            f"Loading FoodLens-AI Keras model from {KERAS_MODEL_PATH}..."
         )
 
         if not os.path.exists(KERAS_MODEL_PATH):

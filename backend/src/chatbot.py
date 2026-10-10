@@ -1,5 +1,5 @@
 """
-FreshLens AI Chatbot Compatibility Wrapper
+FoodLens-AI Chatbot Compatibility Wrapper
 """
 try:
     from services.chatbot_service import get_chatbot_response

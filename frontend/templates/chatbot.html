@@ -3,8 +3,9 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>FreshLens AI Assistant | Food Chatbot</title>
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🥗</text></svg>">
+    <title>FoodLens-AI Assistant | Food Chatbot</title>
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='image/favicon.svg') }}">
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='image/apple-touch-icon.png') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
     <style>
       .chat-wrapper {
@@ -308,13 +309,13 @@
       const welcomeBubble = document.getElementById("welcomeBubble");
 
       // State Management
-      let currentLanguage = localStorage.getItem("freshlens_lang") || "en";
-      let conversationId = sessionStorage.getItem("freshlens_conv_id") || ("conv_" + Date.now() + "_" + Math.random().toString(36).substr(2, 6));
-      sessionStorage.setItem("freshlens_conv_id", conversationId);
+      let currentLanguage = localStorage.getItem("foodlens_lang") || localStorage.getItem("freshlens_lang") || "en";
+      let conversationId = sessionStorage.getItem("foodlens_conv_id") || sessionStorage.getItem("freshlens_conv_id") || ("conv_" + Date.now() + "_" + Math.random().toString(36).substr(2, 6));
+      sessionStorage.setItem("foodlens_conv_id", conversationId);
 
       let activeScanContext = null;
       try {
-        const storedScan = sessionStorage.getItem("freshlens_active_scan");
+        const storedScan = sessionStorage.getItem("foodlens_active_scan") || sessionStorage.getItem("freshlens_active_scan");
         if (storedScan) {
           activeScanContext = JSON.parse(storedScan);
         }
@@ -325,7 +326,7 @@
       // Update Language UI
       function setLanguage(lang) {
         currentLanguage = lang;
-        localStorage.setItem("freshlens_lang", lang);
+        localStorage.setItem("foodlens_lang", lang);
         if (lang === "hi") {
           langHiBtn.classList.add("active");
           langEnBtn.classList.remove("active");
@@ -358,6 +359,7 @@
       if (clearScanContextBtn) {
         clearScanContextBtn.addEventListener("click", () => {
           activeScanContext = null;
+          sessionStorage.removeItem("foodlens_active_scan");
           sessionStorage.removeItem("freshlens_active_scan");
           scanContextBanner.style.display = "none";
         });

@@ -1,5 +1,5 @@
 """
-FreshLens AI - RAG Document Retriever
+FoodLens-AI - RAG Document Retriever
 Retrieves grounded food safety documents and formats citation metadata.
 """
 from typing import List, Dict, Any, Tuple

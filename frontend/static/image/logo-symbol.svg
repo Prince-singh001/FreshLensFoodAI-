@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48" fill="none">
+  <defs>
+    <linearGradient id="flGreenGrad" x1="12" y1="14" x2="36" y2="38" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#16845B"/>
+      <stop offset="100%" stop-color="#105C43"/>
+    </linearGradient>
+    <linearGradient id="flTealGrad" x1="6" y1="24" x2="42" y2="24" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#20B8A5"/>
+      <stop offset="100%" stop-color="#16845B"/>
+    </linearGradient>
+    <linearGradient id="flScanGrad" x1="10" y1="25.5" x2="38" y2="25.5" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#20B8A5" stop-opacity="0.15"/>
+      <stop offset="50%" stop-color="#20B8A5" stop-opacity="1"/>
+      <stop offset="100%" stop-color="#20B8A5" stop-opacity="0.15"/>
+    </linearGradient>
+    <filter id="flGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="1" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+
+  <!-- Viewfinder Scanner Brackets -->
+  <path d="M6 14V9C6 7.34 7.34 6 9 6H14" stroke="#20B8A5" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M34 6H39C40.66 6 42 7.34 42 9V14" stroke="#20B8A5" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M6 34V39C6 40.66 7.34 42 9 42H14" stroke="#20B8A5" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M34 42H39C40.66 42 42 40.66 42 39V34" stroke="#20B8A5" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- Precision Lens Reticle -->
+  <circle cx="24" cy="24" r="16.5" stroke="#16845B" stroke-width="1.5" stroke-dasharray="3.5 2.5" opacity="0.4"/>
+
+  <!-- Stylized Produce Shape (Apple / Fruit Silhouette) -->
+  <path d="M24 17.5C21 16 14.5 17.5 14.5 24.5C14.5 31.5 20 35.5 24 35.5C28 35.5 33.5 31.5 33.5 24.5C33.5 17.5 27 16 24 17.5Z" fill="url(#flGreenGrad)"/>
+
+  <!-- Freshness Leaf with delicate stem -->
+  <path d="M24 17C24.5 12.5 29 10 32.5 10.5C33 14.5 29.5 17.5 24 17Z" fill="#20B8A5"/>
+  <path d="M24 17C26 15 28.5 13.5 32.5 10.5" stroke="#105C43" stroke-width="0.8" stroke-linecap="round" opacity="0.7"/>
+
+  <!-- AI Optical Scan Laser Beam & Focal Sensor -->
+  <line x1="10" y1="25.5" x2="38" y2="25.5" stroke="url(#flScanGrad)" stroke-width="2" stroke-linecap="round" filter="url(#flGlow)"/>
+  <circle cx="24" cy="25.5" r="2.2" fill="#ffffff"/>
+  <circle cx="24" cy="25.5" r="1" fill="#16845B"/>
+</svg>

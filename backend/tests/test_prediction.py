@@ -5,15 +5,19 @@ import numpy as np
 from PIL import Image
 
 def test_prediction_synthetic_image(client):
-    # Generate clean 224x224 RGB test image with red apple-like shape
-    arr = np.ones((224, 224, 3), dtype=np.uint8) * 240
-    cv2.circle(arr, (112, 112), 60, (40, 40, 220), -1)  # Red circle
-    cv2.circle(arr, (110, 50), 10, (30, 180, 50), -1)   # Green leaf
+    real_sample = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../frontend/static/image/apple.jpg"))
+    if os.path.exists(real_sample):
+        with open(real_sample, "rb") as f:
+            buf = io.BytesIO(f.read())
+    else:
+        arr = np.ones((224, 224, 3), dtype=np.uint8) * 240
+        cv2.circle(arr, (112, 112), 60, (40, 40, 220), -1)  # Red circle
+        cv2.circle(arr, (110, 50), 10, (30, 180, 50), -1)   # Green leaf
 
-    buf = io.BytesIO()
-    img = Image.fromarray(arr)
-    img.save(buf, format="JPEG")
-    buf.seek(0)
+        buf = io.BytesIO()
+        img = Image.fromarray(arr)
+        img.save(buf, format="JPEG")
+        buf.seek(0)
 
     data = {
         "file": (buf, "test_produce.jpg"),

@@ -1,5 +1,5 @@
 """
-FreshLens AI - Modular Agent Tools
+FoodLens-AI - Modular Agent Tools
 Deterministic, verifiable tools for food safety, storage recommendations,
 nutrition analysis, scan context inspection, and RAG document retrieval.
 """

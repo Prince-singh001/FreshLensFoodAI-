@@ -1,9 +1,9 @@
-# FreshLens AI - System Architecture
+# FoodLens-AI - System Architecture
 
 ## 1. Architectural Philosophy
-FreshLens AI is engineered around an **API-first, modular, two-stage computer vision architecture** designed for high dependability, low latency, and honest probabilistic evaluations.
+FoodLens-AI is engineered around an **API-first, modular, two-stage computer vision architecture** designed for high dependability, low latency, and honest probabilistic evaluations.
 
-Unlike simplistic prototype models that conflate object identity with freshness condition and hardcode artificial prediction shortcuts, FreshLens AI strictly separates:
+Unlike simplistic prototype models that conflate object identity with freshness condition and hardcode artificial prediction shortcuts, FoodLens-AI strictly separates:
 1. **Object Detection & Localization:** *What food items are present in the image and where are they located?*
 2. **Freshness Assessment:** *For recognized produce items, is the cropped physical surface fresh or spoiled?*
 3. **Out-of-Distribution (OOD) & Image Quality Rejection:** *Is the input image actually food, and is the resolution, illumination, and focus sufficient for dependable inference?*

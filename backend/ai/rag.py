@@ -1,5 +1,5 @@
 """
-FreshLens AI - RAG Knowledge Base & Reference Documentation
+FoodLens-AI - RAG Knowledge Base & Reference Documentation
 Verified food safety, storage recommendations, shelf-life benchmarks,
 and spoilage protocols from USDA FSIS, FDA, and WHO standards.
 """

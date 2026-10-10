@@ -1,7 +1,7 @@
-# FreshLens AI - Training & Evaluation Pipeline
+# FoodLens-AI - Training & Evaluation Pipeline
 
 ## 1. Overview
-FreshLens AI implements standard machine learning workflows with independent validation and test sets, strictly preventing data leakage and eliminating fake performance claims.
+FoodLens-AI implements standard machine learning workflows with independent validation and test sets, strictly preventing data leakage and eliminating fake performance claims.
 
 ---
 
@@ -44,7 +44,7 @@ Evaluates candidate or production models exclusively on the holdout test set (`b
 
 ### Command:
 ```bash
-python training/evaluate.py --model models/production/freshlens_mobilenetv2_model.h5 --test-dir backend/dataset/Test
+python training/evaluate.py --model models/production/foodlens_mobilenetv2_model.h5 --test-dir backend/dataset/Test
 ```
 
 ---

@@ -3,7 +3,7 @@ import sys
 import time
 from functools import wraps
 
-def get_logger(name: str = "freshlens") -> logging.Logger:
+def get_logger(name: str = "foodlens") -> logging.Logger:
     logger = logging.getLogger(name)
     if not logger.handlers:
         logger.setLevel(logging.INFO)
@@ -16,7 +16,7 @@ def get_logger(name: str = "freshlens") -> logging.Logger:
         logger.addHandler(handler)
     return logger
 
-logger = get_logger("freshlens.app")
+logger = get_logger("foodlens.app")
 
 def timed_execution(action_name: str):
     """Decorator to log execution time of ML operations and endpoints."""

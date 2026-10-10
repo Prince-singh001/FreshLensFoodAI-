@@ -1,1 +1,1 @@
-# FreshLens AI Utilities Package
+# FoodLens-AI Utilities Package

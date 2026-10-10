@@ -19,7 +19,7 @@ def make_file_storage(image_bgr: np.ndarray, filename: str) -> FileStorage:
 
 def run_tests():
     print("==================================================")
-    print("Testing FreshLens AI Food Pipeline & Rejection")
+    print("Testing FoodLens-AI Food Pipeline & Rejection")
     print("==================================================")
     all_passed = True
 

@@ -1,11 +1,11 @@
 {
-  "name": "FreshLens AI - Food Recognition & Freshness Analysis",
-  "short_name": "FreshLens AI",
-  "description": "FreshLens AI is an AI-powered food analysis platform that recognizes food items from images and analyzes freshness and safety-related information.",
+  "name": "FoodLens-AI - Food Recognition & Freshness Analysis",
+  "short_name": "FoodLens-AI",
+  "description": "FoodLens-AI is an AI-powered food analysis platform that recognizes food items from images and analyzes freshness and safety-related information.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#0f172a",
-  "theme_color": "#059669",
+  "background_color": "#F7FAF8",
+  "theme_color": "#16845B",
   "orientation": "portrait-primary",
   "icons": [
     {

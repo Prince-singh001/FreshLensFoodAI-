@@ -1,17 +1,17 @@
-# FreshLens AI - Production Deployment Guide
+# FoodLens-AI - Production Deployment Guide
 
 ## 1. Overview
-FreshLens AI is configured for robust deployment to cloud hosting platforms (such as Render, Railway, AWS ECS, or DigitalOcean) with special optimization for low-memory tiers (e.g. Render Free Tier with 512MB RAM).
+FoodLens-AI is configured for robust deployment to cloud hosting platforms (such as Render, Railway, AWS ECS, or DigitalOcean) with special optimization for low-memory tiers (e.g. Render Free Tier with 512MB RAM).
 
 ---
 
 ## 2. Render Deployment (`render.yaml`)
-FreshLens AI includes an infrastructure-as-code specification `render.yaml`:
+FoodLens-AI includes an infrastructure-as-code specification `render.yaml`:
 
 ```yaml
 services:
   - type: web
-    name: freshlens-ai
+    name: foodlens-ai
     runtime: python
     buildCommand: pip install -r backend/requirements.txt
     startCommand: gunicorn --config backend/gunicorn.conf.py backend.app:app
@@ -33,7 +33,7 @@ services:
 1. Push repository changes to GitHub.
 2. Log into [Render Dashboard](https://dashboard.render.com).
 3. Click **New +** -> **Blueprint**.
-4. Connect the GitHub repository `FreshLens-AI` (or your repo name).
+4. Connect the GitHub repository `FoodLens-AI` (or your repo name).
 5. Render will automatically parse `render.yaml` and provision the service.
 
 ---

@@ -1,5 +1,5 @@
 """
-FreshLens AI - Vector Embeddings & Similarity Engine
+FoodLens-AI - Vector Embeddings & Similarity Engine
 Uses lightweight TF-IDF and cosine similarity for fast, memory-safe,
 production-ready document retrieval on low-memory and cloud deployments.
 """

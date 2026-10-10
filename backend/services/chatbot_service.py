@@ -1,5 +1,5 @@
 """
-FreshLens AI - Chatbot Service Wrapper
+FoodLens-AI - Chatbot Service Wrapper
 Connects API endpoints to the Agentic AI Orchestrator with RAG retrieval,
 conversation memory, and multilingual synthesis (English, Hindi, etc.).
 """

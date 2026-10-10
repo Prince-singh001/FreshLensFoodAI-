@@ -3,9 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Food Scanner | FreshLens AI — AI Food Analysis Dashboard</title>
+  <title>Food Scanner | FoodLens-AI — AI Food Analysis Dashboard</title>
   <meta name="description" content="Capture or upload a food image for instant AI produce recognition, freshness condition assessment, and food safety guidance." />
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🥗</text></svg>" />
+  <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='image/favicon.svg') }}" />
+  <link rel="apple-touch-icon" href="{{ url_for('static', filename='image/apple-touch-icon.png') }}" />
   <!-- Google Fonts: Inter & Plus Jakarta Sans for premium AI SaaS typography -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -25,7 +26,7 @@
             <span>AI Food Vision Model v2.0</span>
           </div>
           <h1 class="scanner-page-title">Food Scanner</h1>
-          <p class="scanner-page-desc">Upload or capture a food image and let FreshLens AI analyze its condition.</p>
+          <p class="scanner-page-desc">Upload or capture a food image and let FoodLens-AI analyze its condition.</p>
         </div>
         <div class="scanner-header-badge-group">
           <div class="ai-engine-status-pill">
@@ -258,7 +259,7 @@
                     <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
                   </div>
                   <h4 id="progressStepText">Analyzing image...</h4>
-                  <p class="hud-sub-msg">FreshLens Neural Vision is processing features</p>
+                  <p class="hud-sub-msg">FoodLens-AI Neural Vision is processing features</p>
                   <div class="progress-bar-inner-wrap">
                     <div class="progress-bar-inner" id="progressBarInner" style="width: 20%;"></div>
                   </div>
@@ -270,7 +271,7 @@
           <!-- Viewport Footer Meta Info Bar -->
           <div class="panel-footer vision-footer">
             <div class="vision-meta-left">
-              <span class="model-badge">MobileNetV2 + FreshLens Vision</span>
+              <span class="model-badge">MobileNetV2 + FoodLens Vision</span>
             </div>
             <div class="vision-meta-right">
               <span class="inference-speed-pill">
@@ -395,7 +396,7 @@
                   <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
                   <span>AI Analysis Insight</span>
                 </div>
-                <p class="ai-summary-text" id="aiSummaryText">FreshLens AI identified the uploaded food and analyzed its visible freshness condition.</p>
+                <p class="ai-summary-text" id="aiSummaryText">FoodLens-AI identified the uploaded food and analyzed its visible freshness condition.</p>
               </div>
 
               <!-- 4. Summary Statistics Bar -->
@@ -490,7 +491,7 @@
             <span class="step-num-pill">02</span>
             <div>
               <strong>Neural Analysis</strong>
-              <p>FreshLens MobileNetV2 evaluates surface patterns, color, and spoilage indicators.</p>
+              <p>FoodLens MobileNetV2 evaluates surface patterns, color, and spoilage indicators.</p>
             </div>
           </div>
           <div class="step-compact-item">
@@ -509,7 +510,7 @@
           </div>
           <p>
             <strong>Assistive Food Safety Guidance:</strong>
-            FreshLens AI visual predictions are automated assessments. Always inspect food visually, smell, and follow standard food hygiene before consumption.
+            FoodLens-AI visual predictions are automated assessments. Always inspect food visually, smell, and follow standard food hygiene before consumption.
           </p>
         </div>
       </div>

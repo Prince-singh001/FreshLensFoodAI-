@@ -1,12 +1,12 @@
-# FreshLens AI - API Documentation (v2.0)
+# FoodLens-AI - API Documentation (v2.0)
 
-FreshLens AI provides a production-ready, versioned REST API (`/api/v1/`) designed for web applications, mobile apps (React Native, Flutter, native Android/iOS), and PWA clients.
+FoodLens-AI provides a production-ready, versioned REST API (`/api/v1/`) designed for web applications, mobile apps (React Native, Flutter, native Android/iOS), and PWA clients.
 
 ---
 
 ## Base URLs
 - **Local Development:** `http://localhost:5000/api/v1`
-- **Production (Render):** `https://freshlens-ai.onrender.com/api/v1`
+- **Production (Render):** `https://foodlens-ai.onrender.com/api/v1`
 
 ---
 
@@ -41,7 +41,7 @@ Error responses:
 {
   "success": true,
   "status": "healthy",
-  "service": "FreshLens AI API",
+  "service": "FoodLens-AI API",
   "version": "2.0.0",
   "environment": "production",
   "timestamp": "2026-09-30T01:30:00.000000"

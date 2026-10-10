@@ -1,5 +1,5 @@
 """
-FreshLens AI - LLM Client Interface
+FoodLens-AI - LLM Client Interface
 Configures LangChain chat models if an API key is provided,
 or provides a deterministic, grounded reasoning engine as fallback.
 """

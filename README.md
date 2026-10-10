@@ -1,12 +1,12 @@
-# FreshLens AI 🥗
+# FoodLens-AI
 > **AI-powered food recognition, freshness & safety analysis.**
 
-FreshLens AI is an AI-powered food analysis platform that recognizes food items from images and analyzes freshness and safety-related information.
+FoodLens-AI is an AI-powered food analysis platform that recognizes food items from images and analyzes freshness and safety-related information.
 
 ---
 
 ## 1. Overview
-FreshLens AI is an enterprise-grade, API-first computer vision system engineered to analyze produce condition, detect multiple food objects in mixed baskets, and provide structured food safety guidance. Designed with strict scientific rigor, it replaces brittle heuristics and artificial confidence values with honest, probabilistic machine learning.
+FoodLens-AI is an enterprise-grade, API-first computer vision system engineered to analyze produce condition, detect multiple food objects in mixed baskets, and provide structured food safety guidance. Designed with strict scientific rigor, it replaces brittle heuristics and artificial confidence values with honest, probabilistic machine learning.
 
 ---
 
@@ -30,7 +30,7 @@ FreshLens AI is an enterprise-grade, API-first computer vision system engineered
 User Query + Scan Context + Selected Language (EN / HI)
                         │
                         ▼
-            [ FreshLens AI Orchestrator ]
+            [ FoodLens-AI Orchestrator ]
                         │
        ┌────────────────┴────────────────┐
        ▼                                 ▼
@@ -110,8 +110,8 @@ User Query + Scan Context + Selected Language (EN / HI)
 - **Freshness Classifier:** MobileNetV2 pre-trained on ImageNet with customized GlobalAveragePooling, Dense(256), and Dense(18, softmax) heads.
 - **Detector:** YOLOv8 Nano (`yolov8n.pt`) fine-tuned for food categories and salient bounding proposals.
 - **Model Storage:**
-  - Production Keras: `models/production/freshlens_mobilenetv2_model.h5`
-  - Production TFLite: `models/production/freshlens_mobilenetv2_model.tflite`
+  - Production Keras: `models/production/foodlens_mobilenetv2_model.h5`
+  - Production TFLite: `models/production/foodlens_mobilenetv2_model.tflite`
   - YOLO Weights: `models/production/yolov8n.pt`
   - Backwards-compatible aliases exist for legacy deployments.
 
@@ -165,8 +165,8 @@ See [docs/API.md](docs/API.md) for schemas and cURL examples.
 
 ```bash
 # 1. Clone repository
-git clone https://github.com/Prince-singh001/SafeBite-AI.git
-cd SafeBite-AI
+git clone https://github.com/Prince-singh001/foodLens-AI.git
+cd foodLens-AI
 
 # 2. Create virtual environment
 python -m venv backend/venv
@@ -210,7 +210,7 @@ python training/export_model.py
 
 ## 14. Model Evaluation
 ```bash
-python training/evaluate.py --model models/production/freshlens_mobilenetv2_model.h5 --test-dir backend/dataset/Test
+python training/evaluate.py --model models/production/foodlens_mobilenetv2_model.h5 --test-dir backend/dataset/Test
 ```
 
 ### Verified Test Results (6,780 Holdout Test Images):

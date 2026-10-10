@@ -1,1 +1,1 @@
-# FreshLens AI Test Suite
+# FoodLens-AI Test Suite

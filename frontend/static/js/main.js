@@ -3,8 +3,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const menuBtn = document.getElementById("menuBtn");
   const navLinks = document.getElementById("navLinks");
 
-  // 1. Theme Initialization & Toggle
-  const savedTheme = localStorage.getItem("freshlens_theme") || localStorage.getItem("safebite_theme") || "dark";
+  const savedTheme = localStorage.getItem("foodlens_theme") || localStorage.getItem("freshlens_theme") || localStorage.getItem("safebite_theme") || "dark";
   document.documentElement.setAttribute("data-theme", savedTheme);
   updateThemeIcon(savedTheme);
 
@@ -13,7 +12,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const current = document.documentElement.getAttribute("data-theme");
       const nextTheme = current === "dark" ? "light" : "dark";
       document.documentElement.setAttribute("data-theme", nextTheme);
-      localStorage.setItem("freshlens_theme", nextTheme);
+      localStorage.setItem("foodlens_theme", nextTheme);
       updateThemeIcon(nextTheme);
     });
   }
@@ -49,7 +48,7 @@ document.addEventListener("DOMContentLoaded", () => {
       navigator.serviceWorker
         .register("/static/js/sw.js")
         .then((reg) => {
-          console.log("FreshLens AI ServiceWorker registered:", reg.scope);
+          console.log("FoodLens-AI ServiceWorker registered:", reg.scope);
         })
         .catch((err) => {
           console.warn("ServiceWorker registration skipped:", err);

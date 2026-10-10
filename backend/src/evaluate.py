@@ -1,5 +1,5 @@
 """
-FreshLens AI - Evaluation Script (backend/src/evaluate.py)
+FoodLens-AI - Evaluation Script (backend/src/evaluate.py)
 Evaluates the end-to-end Food Detection and Rejection Pipeline.
 Specifically measures and reports:
   - Accuracy, Precision, Recall, F1-score
@@ -24,7 +24,7 @@ from config import ROOT_DIR, REPORTS_DIR
 
 def evaluate_pipeline():
     print("=" * 60)
-    print("FreshLens AI - Model Evaluation & Pipeline Audit")
+    print("FoodLens-AI - Model Evaluation & Pipeline Audit")
     print("=" * 60)
 
     test_data_dir = ROOT_DIR / "backend" / "data" / "food_vs_nonfood" / "test"
@@ -97,7 +97,7 @@ def evaluate_pipeline():
     os.makedirs(str(REPORTS_DIR), exist_ok=True)
     report_file = REPORTS_DIR / "evaluation_summary.json"
     metrics_data = {
-        "model": "FreshLens AI Production Pipeline",
+        "model": "FoodLens-AI Production Pipeline",
         "total_samples": total_samples,
         "accuracy": round(accuracy, 4),
         "precision": round(precision, 4),

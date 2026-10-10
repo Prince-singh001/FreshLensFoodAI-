@@ -3,9 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Features | FreshLens AI</title>
-  <meta name="description" content="Explore FreshLens AI features: smart food scanning, produce recognition, freshness analysis, AI food assistant, and mobile-first food safety guidance." />
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🥗</text></svg>" />
+  <title>Features | FoodLens-AI</title>
+  <meta name="description" content="Explore FoodLens-AI features: smart food scanning, produce recognition, freshness analysis, AI food assistant, and mobile-first food safety guidance." />
+  <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='image/favicon.svg') }}" />
+  <link rel="apple-touch-icon" href="{{ url_for('static', filename='image/apple-touch-icon.png') }}" />
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
 </head>
 <body>
@@ -18,7 +19,7 @@
         <span class="badge">BUILT FOR SMARTER FOOD DECISIONS</span>
         <h1>Everything You Need to Understand Your Food.</h1>
         <p>
-          FreshLens AI combines computer vision and intelligent food knowledge to turn a simple image into useful insights.
+          FoodLens-AI combines computer vision and intelligent food knowledge to turn a simple image into useful insights.
         </p>
 
         <div class="hero-actions">
@@ -34,7 +35,7 @@
             <p>Produce Analysis Card</p>
           </div>
           <img src="{{ url_for('static', filename='image/home_hero_scan.png') }}" 
-               alt="FreshLens AI produce scanner demonstration" 
+               alt="FoodLens-AI produce scanner demonstration" 
                class="scanner-img"
                onerror="this.src='/static/image/apple.jpg'" />
           <div class="preview-result">
@@ -178,7 +179,7 @@
           <span class="badge">Multi-Item Detection</span>
           <h2 style="font-size:1.75rem; margin:10px 0 12px;">Scan Mixed Food Baskets in a Single Photo</h2>
           <p style="color:var(--text-secondary); line-height:1.7; margin-bottom:16px;">
-            Traditional scanners only accept single, centered items. FreshLens AI can identify multiple items in mixed baskets (e.g., an apple, banana, and tomato together) with independent freshness assessments for each item.
+            Traditional scanners only accept single, centered items. FoodLens-AI can identify multiple items in mixed baskets (e.g., an apple, banana, and tomato together) with independent freshness assessments for each item.
           </p>
           <a href="{{ url_for('scan') }}" class="btn primary touch-friendly" style="padding:10px 20px; font-size:0.9rem;">
             Try Scanner ➔
@@ -241,7 +242,7 @@
         <div class="step-card">
           <span class="step-num">02</span>
           <h3>Recognize</h3>
-          <p style="color:var(--text-secondary); font-size:0.875rem; margin-top:6px;">FreshLens AI localizes and identifies individual produce items.</p>
+          <p style="color:var(--text-secondary); font-size:0.875rem; margin-top:6px;">FoodLens-AI localizes and identifies individual produce items.</p>
         </div>
 
         <div class="step-card">
@@ -264,7 +265,7 @@
       </div>
     </section>
 
-    <!-- Section 6: Why FreshLens AI ("Designed Around Real-World Use") -->
+    <!-- Section 6: Why FoodLens-AI ("Designed Around Real-World Use") -->
     <section style="max-width:1200px; margin:60px auto; padding:0 20px;" class="reveal-on-scroll">
       <div class="section-heading" style="text-align:center; max-width:680px; margin:0 auto 32px;">
         <span class="badge">Design Principles</span>
@@ -312,7 +313,7 @@
       <div class="cta-section" style="padding:48px 24px; text-align:center;">
         <h2 style="font-size:1.85rem; margin-bottom:10px;">Ready to Take a Closer Look at Your Food?</h2>
         <p style="max-width:540px; margin:0 auto 24px; color:var(--text-secondary);">
-          Scan an image and see what FreshLens AI can tell you.
+          Scan an image and see what FoodLens-AI can tell you.
         </p>
         <div style="display:flex; justify-content:center; gap:12px; flex-wrap:wrap;">
           <a href="{{ url_for('scan') }}" class="btn primary touch-friendly" style="padding:12px 28px;">

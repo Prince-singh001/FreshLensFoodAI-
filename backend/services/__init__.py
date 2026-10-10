@@ -1,1 +1,1 @@
-# FreshLens AI Services Package
+# FoodLens-AI Services Package

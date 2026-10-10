@@ -1,7 +1,7 @@
-# FreshLens AI - Dataset Architecture & Management
+# FoodLens-AI - Dataset Architecture & Management
 
 ## 1. Overview
-FreshLens AI utilizes a structured dataset ingestion and preparation pipeline supporting fresh and spoiled produce classifications as well as multi-class food recognition.
+FoodLens-AI utilizes a structured dataset ingestion and preparation pipeline supporting fresh and spoiled produce classifications as well as multi-class food recognition.
 
 ---
 

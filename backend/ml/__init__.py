@@ -1,1 +1,1 @@
-# FreshLens AI Machine Learning Package
+# FoodLens-AI Machine Learning Package

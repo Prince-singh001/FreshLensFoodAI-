@@ -3,7 +3,7 @@ def test_chatbot_greeting(client):
     assert response.status_code == 200
     data = response.get_json()
     assert data["success"] is True
-    assert "FreshLens" in data["answer"]
+    assert "FoodLens" in data["answer"]
 
 
 def test_chatbot_storage_tip_rag(client):

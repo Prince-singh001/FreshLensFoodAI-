@@ -10,7 +10,7 @@ ENV = os.environ.get("FLASK_ENV", "production" if os.environ.get("RENDER") else 
 DEBUG = os.environ.get("FLASK_DEBUG", "0").lower() in ("1", "true") and ENV == "development"
 PORT = int(os.environ.get("PORT", "5000"))
 HOST = os.environ.get("HOST", "0.0.0.0")
-SECRET_KEY = os.environ.get("SECRET_KEY", "freshlens_secure_secret_key_prod_2026")
+SECRET_KEY = os.environ.get("SECRET_KEY", "foodlens_secure_secret_key_prod_2026")
 
 # File Upload configuration
 UPLOAD_FOLDER = os.environ.get(
@@ -40,15 +40,19 @@ MODELS_DIR = ROOT_DIR / "models"
 PRODUCTION_MODEL_DIR = MODELS_DIR / "production"
 LEGACY_BACKEND_MODELS_DIR = BASE_DIR / "models"
 
-# Prefer FreshLens model, fallback to legacy safebite naming for full backwards compatibility
-if (PRODUCTION_MODEL_DIR / "freshlens_mobilenetv2_model.h5").exists():
+# Prefer FoodLens / FreshLens model, fallback to legacy naming for full backwards compatibility
+if (PRODUCTION_MODEL_DIR / "foodlens_mobilenetv2_model.h5").exists():
+    DEFAULT_KERAS_PATH = str(PRODUCTION_MODEL_DIR / "foodlens_mobilenetv2_model.h5")
+elif (PRODUCTION_MODEL_DIR / "freshlens_mobilenetv2_model.h5").exists():
     DEFAULT_KERAS_PATH = str(PRODUCTION_MODEL_DIR / "freshlens_mobilenetv2_model.h5")
 elif (PRODUCTION_MODEL_DIR / "safebite_mobilenetv2_model.h5").exists():
     DEFAULT_KERAS_PATH = str(PRODUCTION_MODEL_DIR / "safebite_mobilenetv2_model.h5")
 else:
     DEFAULT_KERAS_PATH = str(LEGACY_BACKEND_MODELS_DIR / "safebite_mobilenetv2_model.h5")
 
-if (PRODUCTION_MODEL_DIR / "freshlens_mobilenetv2_model.tflite").exists():
+if (PRODUCTION_MODEL_DIR / "foodlens_mobilenetv2_model.tflite").exists():
+    DEFAULT_TFLITE_PATH = str(PRODUCTION_MODEL_DIR / "foodlens_mobilenetv2_model.tflite")
+elif (PRODUCTION_MODEL_DIR / "freshlens_mobilenetv2_model.tflite").exists():
     DEFAULT_TFLITE_PATH = str(PRODUCTION_MODEL_DIR / "freshlens_mobilenetv2_model.tflite")
 elif (PRODUCTION_MODEL_DIR / "safebite_mobilenetv2_model.tflite").exists():
     DEFAULT_TFLITE_PATH = str(PRODUCTION_MODEL_DIR / "safebite_mobilenetv2_model.tflite")

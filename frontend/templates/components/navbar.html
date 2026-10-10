@@ -1,6 +1,7 @@
 <nav class="navbar" role="navigation" aria-label="Main Navigation">
-  <a href="{{ url_for('home') }}" class="logo">
-    <span>🥗</span> FreshLens AI
+  <a href="{{ url_for('home') }}" class="logo" aria-label="FoodLens-AI Home">
+    <img src="{{ url_for('static', filename='image/logo-symbol.svg') }}" alt="FoodLens-AI" class="brand-symbol" width="34" height="34" />
+    <span class="brand-text">Food<span>Lens</span><span class="brand-badge">AI</span></span>
   </a>
 
   <div class="nav-right" style="display:flex; align-items:center; gap:12px;">

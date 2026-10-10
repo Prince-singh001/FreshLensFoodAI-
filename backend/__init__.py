@@ -1,1 +1,1 @@
-# FreshLens AI Backend Package
+# FoodLens-AI Backend Package

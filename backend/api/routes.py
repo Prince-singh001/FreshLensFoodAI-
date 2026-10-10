@@ -30,7 +30,7 @@ def health_check():
     return jsonify({
         "success": True,
         "status": "healthy",
-        "service": "FreshLens AI API",
+        "service": "FoodLens-AI API",
         "version": "2.0.0",
         "environment": ENV,
         "timestamp": datetime.now().isoformat()
